@@ -2,181 +2,693 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Arsenal Meetup - Door Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Arsenal Pune SC - Match Day Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a1a;
-            color: white;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+        :root {
+            --red: #EF0107;
+            --red-dark: #B80006;
+            --red-glow: rgba(239, 1, 7, 0.3);
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --surface-2: #1c1c1c;
+            --surface-3: #252525;
+            --text: #ffffff;
+            --text-dim: #777;
+            --text-muted: #444;
+            --green: #00C853;
+            --green-bg: #0a2e14;
+            --amber: #FF9100;
+            --amber-bg: #2e1f0a;
+            --blue: #2979FF;
+            --blue-bg: #0a1a2e;
+            --error-red: #FF1744;
+            --error-bg: #2e0a0e;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            min-height: 100dvh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ---- PIN GATE ---- */
         #pin-gate {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            gap: 16px;
+            min-height: 100dvh;
+            padding: 40px 24px;
+            background: var(--bg);
+            position: relative;
+            overflow: hidden;
         }
-        #pin-gate h2 { color: #EF0107; font-size: 22px; }
-        #pin-gate input {
-            padding: 14px;
-            font-size: 24px;
-            text-align: center;
-            letter-spacing: 12px;
-            width: 200px;
-            border: 2px solid #444;
-            border-radius: 8px;
-            background: #222;
+
+        #pin-gate::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 50% 40%, var(--red-glow) 0%, transparent 50%);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .pin-cannon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .pin-cannon svg { width: 100%; height: 100%; }
+
+        .pin-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 36px;
+            letter-spacing: 3px;
+            color: var(--text);
+            position: relative;
+            z-index: 1;
+        }
+
+        .pin-subtitle {
+            font-size: 13px;
+            color: var(--text-dim);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-top: 4px;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .pin-input-wrap {
+            position: relative;
+            z-index: 1;
+        }
+
+        .pin-dots {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            justify-content: center;
+        }
+
+        .pin-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--surface-3);
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .pin-dot.filled {
+            background: var(--red);
+            border-color: var(--red);
+            box-shadow: 0 0 12px var(--red-glow);
+        }
+
+        .pin-dot.error {
+            border-color: var(--error-red);
+            animation: dotShake 0.4s ease;
+        }
+
+        @keyframes dotShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        #pin-input {
+            position: absolute;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+        }
+
+        .pin-error {
+            color: var(--error-red);
+            font-size: 13px;
+            font-weight: 500;
+            min-height: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .pin-hint {
+            position: absolute;
+            bottom: 40px;
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            z-index: 1;
+        }
+
+        /* ---- SCANNER APP ---- */
+        #scanner-app {
+            display: none;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .app-header {
+            background: var(--red);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 10;
+        }
+
+        .app-header::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            right: 0;
+            height: 20px;
+            background: linear-gradient(to bottom, rgba(239,1,7,0.15), transparent);
+            pointer-events: none;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-cannon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .header-cannon svg { width: 100%; height: 100%; }
+
+        .header-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            letter-spacing: 2px;
             color: white;
         }
-        #pin-gate .error { color: #EF0107; font-size: 14px; min-height: 20px; }
-        #scanner-app { display: none; }
-        .header {
-            background: #EF0107;
-            padding: 15px;
+
+        .header-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.9);
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            background: var(--surface);
+            border-bottom: 1px solid var(--surface-2);
+        }
+
+        .stat {
+            padding: 12px 0;
             text-align: center;
-            font-size: 18px;
-            font-weight: bold;
+            position: relative;
         }
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            padding: 10px;
-            background: #222;
-            font-size: 14px;
+
+        .stat:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 20%;
+            height: 60%;
+            width: 1px;
+            background: var(--surface-3);
         }
-        .stats span { color: #aaa; }
-        .stats strong { color: white; }
-        #video-container {
-            flex: 1;
+
+        .stat-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 28px;
+            line-height: 1;
+            color: var(--text);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .stat-value.green { color: var(--green); }
+        .stat-value.amber { color: var(--amber); }
+
+        /* Camera viewfinder */
+        .viewfinder {
+            position: relative;
+            background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            background: #000;
+            height: 28vh;
+            overflow: hidden;
         }
-        video {
+
+        .viewfinder video {
             width: 100%;
-            max-height: 50vh;
+            height: 100%;
             object-fit: cover;
         }
-        .scan-overlay {
+
+        .viewfinder-overlay {
             position: absolute;
-            width: 200px;
-            height: 200px;
-            border: 3px solid rgba(255,255,255,0.5);
-            border-radius: 12px;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
         }
-        #result {
+
+        .scan-frame {
+            width: 220px;
+            height: 220px;
+            position: relative;
+        }
+
+        .scan-corner {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-color: var(--red);
+            border-style: solid;
+            border-width: 0;
+        }
+
+        .scan-corner.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 8px; }
+        .scan-corner.tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 8px; }
+        .scan-corner.bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 8px; }
+        .scan-corner.br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 8px; }
+
+        .scan-line {
+            position: absolute;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--red), transparent);
+            box-shadow: 0 0 12px var(--red-glow);
+            animation: scanMove 2.5s ease-in-out infinite;
+        }
+
+        @keyframes scanMove {
+            0%, 100% { top: 10%; }
+            50% { top: 88%; }
+        }
+
+        .viewfinder-dim {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='white'/%3E%3Crect x='50%25' y='50%25' width='220' height='220' rx='12' transform='translate(-110,-110)' fill='black'/%3E%3C/svg%3E");
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='white'/%3E%3Crect x='50%25' y='50%25' width='220' height='220' rx='12' transform='translate(-110,-110)' fill='black'/%3E%3C/svg%3E");
+        }
+
+        .camera-off {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .camera-off-icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+            opacity: 0.3;
+        }
+
+        /* Result panel */
+        .result-panel {
             padding: 20px;
             text-align: center;
-            min-height: 140px;
+            min-height: 120px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: background 0.3s;
+            background: var(--surface);
+            transition: background 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-        #result.valid { background: #1a7a1a; }
-        #result.invalid { background: #cc0000; }
-        #result.partial { background: #0066aa; }
-        #result.full { background: #cc8800; }
-        #result h2 { font-size: 24px; margin-bottom: 5px; }
-        #result p { font-size: 14px; opacity: 0.9; }
-        #result .counter { font-size: 36px; font-weight: bold; margin: 5px 0; }
-        .log {
-            padding: 10px;
-            background: #111;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 12px;
+
+        .result-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
-        .log-entry {
-            padding: 5px 10px;
-            border-bottom: 1px solid #222;
+
+        .result-panel.valid { background: var(--green-bg); }
+        .result-panel.valid::before { background: radial-gradient(circle at 50% 0%, rgba(0,200,83,0.1), transparent 70%); opacity: 1; }
+
+        .result-panel.invalid { background: var(--error-bg); }
+        .result-panel.invalid::before { background: radial-gradient(circle at 50% 0%, rgba(255,23,68,0.1), transparent 70%); opacity: 1; }
+
+        .result-panel.partial { background: var(--blue-bg); }
+        .result-panel.partial::before { background: radial-gradient(circle at 50% 0%, rgba(41,121,255,0.1), transparent 70%); opacity: 1; }
+
+        .result-panel.full { background: var(--amber-bg); }
+        .result-panel.full::before { background: radial-gradient(circle at 50% 0%, rgba(255,145,0,0.1), transparent 70%); opacity: 1; }
+
+        .result-icon {
+            font-size: 36px;
+            margin-bottom: 4px;
+            animation: resultPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .log-entry.valid { border-left: 3px solid #1a7a1a; }
-        .log-entry.invalid { border-left: 3px solid #cc0000; }
-        .log-entry.partial { border-left: 3px solid #0066aa; }
-        .log-entry.full { border-left: 3px solid #cc8800; }
-        .manual-input {
-            display: flex;
-            padding: 10px;
-            background: #222;
-            gap: 8px;
+
+        @keyframes resultPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
-        .manual-input input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #444;
-            border-radius: 6px;
-            background: #333;
-            color: white;
+
+        .result-status {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 32px;
+            letter-spacing: 3px;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .result-panel.valid .result-status { color: var(--green); }
+        .result-panel.invalid .result-status { color: var(--error-red); }
+        .result-panel.partial .result-status { color: var(--blue); }
+        .result-panel.full .result-status { color: var(--amber); }
+
+        .result-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .result-detail {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .result-counter {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 44px;
+            letter-spacing: 2px;
+            line-height: 1;
+            margin: 4px 0;
+        }
+
+        .result-panel.valid .result-counter { color: var(--green); }
+        .result-panel.partial .result-counter { color: var(--blue); }
+        .result-panel.full .result-counter { color: var(--amber); }
+
+        .result-idle {
+            color: var(--text-muted);
             font-size: 14px;
         }
-        .manual-input button {
-            padding: 10px 16px;
-            background: #EF0107;
+
+        /* Manual input */
+        .manual-bar {
+            display: flex;
+            padding: 10px 12px;
+            gap: 8px;
+            background: var(--surface-2);
+            border-top: 1px solid var(--surface-3);
+        }
+
+        .manual-bar input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid var(--surface-3);
+            border-radius: 10px;
+            background: var(--surface);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .manual-bar input:focus {
+            border-color: var(--red);
+        }
+
+        .manual-bar input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .manual-bar button {
+            padding: 12px 18px;
+            background: var(--red);
             color: white;
             border: none;
-            border-radius: 6px;
-            font-weight: bold;
+            border-radius: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+            min-width: 60px;
+        }
+
+        .manual-bar button:active {
+            background: var(--red-dark);
+            transform: scale(0.97);
+        }
+
+        /* Scan log */
+        .log-section {
+            background: var(--surface);
+            border-top: 1px solid var(--surface-2);
+        }
+
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
             cursor: pointer;
         }
+
+        .log-header span {
+            font-size: 11px;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .log-toggle {
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .log-list {
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 0 12px 10px;
+        }
+
+        .log-list::-webkit-scrollbar { width: 0; }
+
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            background: var(--surface-2);
+        }
+
+        .log-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .log-entry.valid .log-dot { background: var(--green); }
+        .log-entry.invalid .log-dot { background: var(--error-red); }
+        .log-entry.partial .log-dot { background: var(--blue); }
+        .log-entry.full .log-dot { background: var(--amber); }
+
+        .log-text {
+            flex: 1;
+            color: var(--text-dim);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .log-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        /* Footer */
+        .app-footer {
+            padding: 12px;
+            display: flex;
+            justify-content: center;
+            background: var(--surface);
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+        }
+
         .reset-btn {
-            display: block;
-            margin: 10px auto;
-            padding: 8px 16px;
-            background: #333;
-            color: #aaa;
-            border: 1px solid #555;
-            border-radius: 6px;
+            padding: 8px 20px;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--surface-3);
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
             font-size: 12px;
             cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .reset-btn:active {
+            background: var(--surface-2);
+            color: var(--text-dim);
+        }
+
+        /* Animations */
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .result-panel.valid .result-icon,
+        .result-panel.invalid .result-icon,
+        .result-panel.partial .result-icon,
+        .result-panel.full .result-icon {
+            animation: resultPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .result-panel.valid .result-name,
+        .result-panel.invalid .result-name,
+        .result-panel.partial .result-name,
+        .result-panel.full .result-name {
+            animation: slideUp 0.25s ease 0.1s both;
         }
     </style>
 </head>
 <body>
 
+<!-- PIN GATE -->
 <div id="pin-gate">
-    <h2>Arsenal Pune SC</h2>
-    <p>Door Scanner</p>
-    <input type="password" id="pin-input" maxlength="4" inputmode="numeric" placeholder="PIN" autofocus />
-    <p class="error" id="pin-error"></p>
+    <div class="pin-cannon">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="30" stroke="#EF0107" stroke-width="2.5" fill="none"/>
+            <path d="M16 35 L48 35 L52 32 L48 29 L16 29 Z" fill="#EF0107"/>
+            <circle cx="16" cy="32" r="6" fill="#EF0107"/>
+        </svg>
+    </div>
+    <div class="pin-title">ARSENAL PUNE SC</div>
+    <div class="pin-subtitle">Match Day Scanner</div>
+    <div class="pin-input-wrap" onclick="document.getElementById('pin-input').focus()">
+        <div class="pin-dots">
+            <div class="pin-dot" id="dot-0"></div>
+            <div class="pin-dot" id="dot-1"></div>
+            <div class="pin-dot" id="dot-2"></div>
+            <div class="pin-dot" id="dot-3"></div>
+        </div>
+        <input type="tel" id="pin-input" maxlength="4" inputmode="numeric" autofocus autocomplete="off" />
+    </div>
+    <p class="pin-error" id="pin-error"></p>
+    <p class="pin-hint">Enter 4-digit PIN to unlock</p>
 </div>
 
+<!-- SCANNER APP -->
 <div id="scanner-app">
-<div class="header">Arsenal Meetup - Door Scanner</div>
+    <div class="app-header">
+        <div class="header-left">
+            <div class="header-cannon">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h16l2-1-2-1H4Z" fill="white"/><circle cx="4" cy="12" r="2.5" fill="white"/></svg>
+            </div>
+            <span class="header-title">MATCH DAY</span>
+        </div>
+        <span class="header-badge">Scanner</span>
+    </div>
 
-<div class="stats">
-    <div><span>Tickets: </span><strong id="total">0</strong></div>
-    <div><span>In: </span><strong id="checked">0</strong></div>
-    <div><span>Remaining: </span><strong id="remaining">0</strong></div>
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value" id="total">0</div>
+            <div class="stat-label">Tickets</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value green" id="checked">0</div>
+            <div class="stat-label">Checked In</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value amber" id="remaining">0</div>
+            <div class="stat-label">Remaining</div>
+        </div>
+    </div>
+
+    <div class="viewfinder" id="video-container">
+        <video id="video" autoplay playsinline></video>
+        <div class="viewfinder-overlay">
+            <div class="scan-frame">
+                <div class="scan-corner tl"></div>
+                <div class="scan-corner tr"></div>
+                <div class="scan-corner bl"></div>
+                <div class="scan-corner br"></div>
+                <div class="scan-line"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="result-panel" id="result">
+        <p class="result-idle">Point camera at a QR ticket</p>
+    </div>
+
+    <div class="manual-bar">
+        <input type="text" id="manual-id" placeholder="Ticket ID" />
+        <button onclick="manualCheck()">Check</button>
+    </div>
+
+    <div class="log-section">
+        <div class="log-header" onclick="toggleLog()">
+            <span>Scan Log</span>
+            <span class="log-toggle" id="log-toggle">&#9660;</span>
+        </div>
+        <div class="log-list" id="log"></div>
+    </div>
+
+    <div class="app-footer">
+        <button class="reset-btn" onclick="resetScans()">Reset All Scans</button>
+    </div>
 </div>
 
-<div id="video-container">
-    <video id="video" autoplay playsinline></video>
-    <div class="scan-overlay"></div>
-</div>
-
-<div id="result">
-    <p style="color: #888;">Point camera at a QR code ticket</p>
-</div>
-
-<div class="manual-input">
-    <input type="text" id="manual-id" placeholder="Or type message ID manually" />
-    <button onclick="manualCheck()">Check</button>
-</div>
-
-<div class="log" id="log"></div>
-
-<button class="reset-btn" onclick="resetScans()">Reset all scans (start over)</button>
-
+<!-- TEST DATA -->
 <script type="module">
     const GUESTS = {"19ca7b7f1bbe19c2": {"name": "Abbul Farooque", "email": "shaunabbul@gmail.com", "phone": "7507732260", "amount": 1000.0, "quantity": 2}, "19ca7f4f882cc5b2": {"name": "Gaurav Oswal", "email": "gauravoswall@gmail.com", "phone": "9604266106", "amount": 500.0, "quantity": 1}, "19ca9169518125e9": {"name": "Vyankatesh Deshpande", "email": "vygodisgreat2003@gmail.com", "phone": "7620023684", "amount": 2000.0, "quantity": 4}};
 
@@ -205,24 +717,25 @@
 
     function showResult(id) {
         const guest = GUESTS[id];
-        const time = new Date().toLocaleTimeString();
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         if (!guest) {
-            resultEl.className = 'invalid';
-            resultEl.innerHTML = '<h2>NOT FOUND</h2><p>This QR is not in the guest list</p>';
-            addLog(id, 'INVALID', 'invalid');
+            resultEl.className = 'result-panel invalid';
+            resultEl.innerHTML = '<div class="result-icon">&#10007;</div><div class="result-status">NOT FOUND</div><div class="result-detail">QR not in guest list</div>';
+            addLog(id.substring(0, 12), time, 'invalid');
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             return;
         }
 
         if (!scanned[id]) scanned[id] = { count: 0, times: [] };
-
         const record = scanned[id];
         const max = guest.quantity;
 
         if (record.count >= max) {
-            resultEl.className = 'full';
-            resultEl.innerHTML = `<h2>ALL CHECKED IN</h2><p class="counter">${record.count}/${max}</p><p>${guest.name} - all ${max} already entered</p>`;
-            addLog(`${guest.name} (full - ${record.count}/${max})`, 'BLOCKED', 'full');
+            resultEl.className = 'result-panel full';
+            resultEl.innerHTML = `<div class="result-icon">&#9888;</div><div class="result-status">ALREADY IN</div><div class="result-counter">${record.count}/${max}</div><div class="result-name">${guest.name}</div><div class="result-detail">All ${max} ticket${max > 1 ? 's' : ''} used</div>`;
+            addLog(`${guest.name} (${record.count}/${max})`, time, 'full');
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
             return;
         }
 
@@ -231,37 +744,51 @@
         localStorage.setItem(scannedKey, JSON.stringify(scanned));
 
         if (record.count < max) {
-            resultEl.className = 'partial';
-            resultEl.innerHTML = `<h2>WELCOME!</h2><p>${guest.name}</p><p class="counter">${record.count} of ${max} in</p><p>${max - record.count} more to go</p>`;
+            resultEl.className = 'result-panel partial';
+            resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter</div>`;
             addLog(`${guest.name} (${record.count}/${max})`, time, 'partial');
         } else {
-            resultEl.className = 'valid';
+            resultEl.className = 'result-panel valid';
             if (max === 1) {
-                resultEl.innerHTML = `<h2>WELCOME!</h2><p>${guest.name}</p><p style="font-size:12px">${guest.phone}</p>`;
+                resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div>`;
             } else {
-                resultEl.innerHTML = `<h2>WELCOME!</h2><p>${guest.name}</p><p class="counter">${record.count}/${max} - all in!</p>`;
+                resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in</div>`;
             }
-            addLog(`${guest.name} (${record.count}/${max} - complete)`, time, 'valid');
+            addLog(`${guest.name}${max > 1 ? ` (${record.count}/${max})` : ''}`, time, 'valid');
         }
         updateStats();
+        if (navigator.vibrate) navigator.vibrate(100);
     }
 
-    function addLog(name, detail, cls) {
+    function addLog(name, time, cls) {
         const entry = document.createElement('div');
         entry.className = `log-entry ${cls}`;
-        entry.textContent = `${name} - ${detail}`;
+        entry.innerHTML = `<div class="log-dot"></div><div class="log-text">${name}</div><div class="log-time">${time}</div>`;
         logEl.prepend(entry);
     }
 
     window.showResult = showResult;
+
     window.resetScans = function() {
-        if (confirm('Reset all scans? This clears everyone\'s check-in status.')) {
+        if (confirm('Reset all scans? This clears check-in data.')) {
             scanned = {};
             localStorage.setItem(scannedKey, JSON.stringify(scanned));
             updateStats();
-            resultEl.className = '';
-            resultEl.innerHTML = '<p style="color: #888;">Scans reset. Ready to go.</p>';
+            resultEl.className = 'result-panel';
+            resultEl.innerHTML = '<p class="result-idle">Scans reset. Ready.</p>';
             logEl.innerHTML = '';
+        }
+    };
+
+    window.toggleLog = function() {
+        const log = document.getElementById('log');
+        const toggle = document.getElementById('log-toggle');
+        if (log.style.display === 'none') {
+            log.style.display = 'block';
+            toggle.innerHTML = '&#9660;';
+        } else {
+            log.style.display = 'none';
+            toggle.innerHTML = '&#9654;';
         }
     };
 
@@ -323,7 +850,7 @@
             }
         } catch (err) {
             document.getElementById('video-container').innerHTML =
-                '<p style="padding:20px; color:#ff6666;">Camera access denied. Use manual input below.</p>';
+                '<div class="camera-off"><div class="camera-off-icon">&#128247;</div><p>Camera not available<br><small>Use manual input below</small></p></div>';
         }
     }
 
@@ -331,6 +858,39 @@
 </script>
 
 <script>
+    // PIN logic
+    const PIN = '1886';
+    const pinInput = document.getElementById('pin-input');
+    const pinError = document.getElementById('pin-error');
+    const dots = [0,1,2,3].map(i => document.getElementById(`dot-${i}`));
+
+    if (sessionStorage.getItem('scanner_unlocked') === 'true') {
+        document.getElementById('pin-gate').style.display = 'none';
+        document.getElementById('scanner-app').style.display = 'flex';
+    }
+
+    pinInput.addEventListener('input', () => {
+        const val = pinInput.value;
+        dots.forEach((d, i) => {
+            d.classList.toggle('filled', i < val.length);
+            d.classList.remove('error');
+        });
+        pinError.textContent = '';
+
+        if (val.length === 4) {
+            if (val === PIN) {
+                sessionStorage.setItem('scanner_unlocked', 'true');
+                document.getElementById('pin-gate').style.display = 'none';
+                document.getElementById('scanner-app').style.display = 'flex';
+            } else {
+                dots.forEach(d => { d.classList.remove('filled'); d.classList.add('error'); });
+                pinError.textContent = 'Wrong PIN';
+                setTimeout(() => { pinInput.value = ''; dots.forEach(d => d.classList.remove('error')); }, 500);
+            }
+        }
+    });
+
+    // Manual check
     function manualCheck() {
         const input = document.getElementById('manual-id');
         const value = input.value.trim();
@@ -339,34 +899,14 @@
             input.value = '';
         }
     }
+
     document.getElementById('manual-id').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') manualCheck();
     });
-</script>
 
-</div><!-- end scanner-app -->
-
-<script>
-    const PIN = '1886';
-    const pinInput = document.getElementById('pin-input');
-    const pinError = document.getElementById('pin-error');
-
-    if (sessionStorage.getItem('scanner_unlocked') === 'true') {
-        document.getElementById('pin-gate').style.display = 'none';
-        document.getElementById('scanner-app').style.display = 'flex';
-    }
-
-    pinInput.addEventListener('input', () => {
-        if (pinInput.value.length === 4) {
-            if (pinInput.value === PIN) {
-                sessionStorage.setItem('scanner_unlocked', 'true');
-                document.getElementById('pin-gate').style.display = 'none';
-                document.getElementById('scanner-app').style.display = 'flex';
-            } else {
-                pinError.textContent = 'Wrong PIN';
-                pinInput.value = '';
-            }
-        }
+    // Keep PIN input focused on the gate screen
+    document.getElementById('pin-gate').addEventListener('click', () => {
+        pinInput.focus();
     });
 </script>
 
