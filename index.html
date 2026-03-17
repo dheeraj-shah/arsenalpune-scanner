@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Arsenal Meetup - Door Scanner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #pin-gate {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            gap: 16px;
+        }
+        #pin-gate h2 { color: #EF0107; font-size: 22px; }
+        #pin-gate input {
+            padding: 14px;
+            font-size: 24px;
+            text-align: center;
+            letter-spacing: 12px;
+            width: 200px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+        }
+        #pin-gate .error { color: #EF0107; font-size: 14px; min-height: 20px; }
+        #scanner-app { display: none; }
+        .header {
+            background: #EF0107;
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: #222;
+            font-size: 14px;
+        }
+        .stats span { color: #aaa; }
+        .stats strong { color: white; }
+        #video-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #000;
+        }
+        video {
+            width: 100%;
+            max-height: 50vh;
+            object-fit: cover;
+        }
+        .scan-overlay {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 3px solid rgba(255,255,255,0.5);
+            border-radius: 12px;
+        }
+        #result {
+            padding: 20px;
+            text-align: center;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+        #result.valid { background: #1a7a1a; }
+        #result.invalid { background: #cc0000; }
+        #result.partial { background: #0066aa; }
+        #result.full { background: #cc8800; }
+        #result h2 { font-size: 24px; margin-bottom: 5px; }
+        #result p { font-size: 14px; opacity: 0.9; }
+        #result .counter { font-size: 36px; font-weight: bold; margin: 5px 0; }
+        .log {
+            padding: 10px;
+            background: #111;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .log-entry {
+            padding: 5px 10px;
+            border-bottom: 1px solid #222;
+        }
+        .log-entry.valid { border-left: 3px solid #1a7a1a; }
+        .log-entry.invalid { border-left: 3px solid #cc0000; }
+        .log-entry.partial { border-left: 3px solid #0066aa; }
+        .log-entry.full { border-left: 3px solid #cc8800; }
+        .manual-input {
+            display: flex;
+            padding: 10px;
+            background: #222;
+            gap: 8px;
+        }
+        .manual-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #333;
+            color: white;
+            font-size: 14px;
+        }
+        .manual-input button {
+            padding: 10px 16px;
+            background: #EF0107;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .reset-btn {
+            display: block;
+            margin: 10px auto;
+            padding: 8px 16px;
+            background: #333;
+            color: #aaa;
+            border: 1px solid #555;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="pin-gate">
+    <h2>Arsenal Pune SC</h2>
+    <p>Door Scanner</p>
+    <input type="password" id="pin-input" maxlength="4" inputmode="numeric" placeholder="PIN" autofocus />
+    <p class="error" id="pin-error"></p>
+</div>
+
+<div id="scanner-app">
+<div class="header">Arsenal Meetup - Door Scanner</div>
+
+<div class="stats">
+    <div><span>Tickets: </span><strong id="total">0</strong></div>
+    <div><span>In: </span><strong id="checked">0</strong></div>
+    <div><span>Remaining: </span><strong id="remaining">0</strong></div>
+</div>
+
+<div id="video-container">
+    <video id="video" autoplay playsinline></video>
+    <div class="scan-overlay"></div>
+</div>
+
+<div id="result">
+    <p style="color: #888;">Point camera at a QR code ticket</p>
+</div>
+
+<div class="manual-input">
+    <input type="text" id="manual-id" placeholder="Or type message ID manually" />
+    <button onclick="manualCheck()">Check</button>
+</div>
+
+<div class="log" id="log"></div>
+
+<button class="reset-btn" onclick="resetScans()">Reset all scans (start over)</button>
+
+<script type="module">
+    const GUESTS = {"19ca7b7f1bbe19c2": {"name": "Abbul Farooque", "email": "shaunabbul@gmail.com", "phone": "7507732260", "amount": 1000.0, "quantity": 2}, "19ca7f4f882cc5b2": {"name": "Gaurav Oswal", "email": "gauravoswall@gmail.com", "phone": "9604266106", "amount": 500.0, "quantity": 1}, "19ca9169518125e9": {"name": "Vyankatesh Deshpande", "email": "vygodisgreat2003@gmail.com", "phone": "7620023684", "amount": 2000.0, "quantity": 4}};
+
+    const scannedKey = 'arsenal_meetup_scanned';
+    let scanned = JSON.parse(localStorage.getItem(scannedKey) || '{}');
+
+    const totalEl = document.getElementById('total');
+    const checkedEl = document.getElementById('checked');
+    const remainingEl = document.getElementById('remaining');
+
+    function updateStats() {
+        let totalTickets = 0;
+        let checkedIn = 0;
+        for (const [id, guest] of Object.entries(GUESTS)) {
+            totalTickets += guest.quantity;
+            if (scanned[id]) checkedIn += scanned[id].count;
+        }
+        totalEl.textContent = totalTickets;
+        checkedEl.textContent = checkedIn;
+        remainingEl.textContent = totalTickets - checkedIn;
+    }
+    updateStats();
+
+    const resultEl = document.getElementById('result');
+    const logEl = document.getElementById('log');
+
+    function showResult(id) {
+        const guest = GUESTS[id];
+        const time = new Date().toLocaleTimeString();
+
+        if (!guest) {
+            resultEl.className = 'invalid';
+            resultEl.innerHTML = '<h2>NOT FOUND</h2><p>This QR is not in the guest list</p>';
+            addLog(id, 'INVALID', 'invalid');
+            return;
+        }
+
+        if (!scanned[id]) scanned[id] = { count: 0, times: [] };
+
+        const record = scanned[id];
+        const max = guest.quantity;
+
+        if (record.count >= max) {
+            resultEl.className = 'full';
+            resultEl.innerHTML = `<h2>ALL CHECKED IN</h2><p class="counter">${record.count}/${max}</p><p>${guest.name} - all ${max} already entered</p>`;
+            addLog(`${guest.name} (full - ${record.count}/${max})`, 'BLOCKED', 'full');
+            return;
+        }
+
+        record.count += 1;
+        record.times.push(time);
+        localStorage.setItem(scannedKey, JSON.stringify(scanned));
+
+        if (record.count < max) {
+            resultEl.className = 'partial';
+            resultEl.innerHTML = `<h2>WELCOME!</h2><p>${guest.name}</p><p class="counter">${record.count} of ${max} in</p><p>${max - record.count} more to go</p>`;
+            addLog(`${guest.name} (${record.count}/${max})`, time, 'partial');
+        } else {
+            resultEl.className = 'valid';
+            if (max === 1) {
+                resultEl.innerHTML = `<h2>WELCOME!</h2><p>${guest.name}</p><p style="font-size:12px">${guest.phone}</p>`;
+            } else {
+                resultEl.innerHTML = `<h2>WELCOME!</h2><p>${guest.name}</p><p class="counter">${record.count}/${max} - all in!</p>`;
+            }
+            addLog(`${guest.name} (${record.count}/${max} - complete)`, time, 'valid');
+        }
+        updateStats();
+    }
+
+    function addLog(name, detail, cls) {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${cls}`;
+        entry.textContent = `${name} - ${detail}`;
+        logEl.prepend(entry);
+    }
+
+    window.showResult = showResult;
+    window.resetScans = function() {
+        if (confirm('Reset all scans? This clears everyone\'s check-in status.')) {
+            scanned = {};
+            localStorage.setItem(scannedKey, JSON.stringify(scanned));
+            updateStats();
+            resultEl.className = '';
+            resultEl.innerHTML = '<p style="color: #888;">Scans reset. Ready to go.</p>';
+            logEl.innerHTML = '';
+        }
+    };
+
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+
+            if ('BarcodeDetector' in window) {
+                const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                let lastScan = '';
+                let lastScanTime = 0;
+
+                setInterval(async () => {
+                    try {
+                        const barcodes = await detector.detect(video);
+                        if (barcodes.length > 0) {
+                            const value = barcodes[0].rawValue;
+                            const now = Date.now();
+                            if (value !== lastScan || now - lastScanTime > 3000) {
+                                lastScan = value;
+                                lastScanTime = now;
+                                showResult(value);
+                            }
+                        }
+                    } catch (e) {}
+                }, 300);
+            } else {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+                script.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    let lastScan = '';
+                    let lastScanTime = 0;
+
+                    setInterval(() => {
+                        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            ctx.drawImage(video, 0, 0);
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const code = jsQR(imageData.data, canvas.width, canvas.height);
+                            if (code) {
+                                const now = Date.now();
+                                if (code.data !== lastScan || now - lastScanTime > 3000) {
+                                    lastScan = code.data;
+                                    lastScanTime = now;
+                                    showResult(code.data);
+                                }
+                            }
+                        }
+                    }, 300);
+                };
+                document.head.appendChild(script);
+            }
+        } catch (err) {
+            document.getElementById('video-container').innerHTML =
+                '<p style="padding:20px; color:#ff6666;">Camera access denied. Use manual input below.</p>';
+        }
+    }
+
+    startCamera();
+</script>
+
+<script>
+    function manualCheck() {
+        const input = document.getElementById('manual-id');
+        const value = input.value.trim();
+        if (value) {
+            window.showResult(value);
+            input.value = '';
+        }
+    }
+    document.getElementById('manual-id').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') manualCheck();
+    });
+</script>
+
+</div><!-- end scanner-app -->
+
+<script>
+    const PIN = '1886';
+    const pinInput = document.getElementById('pin-input');
+    const pinError = document.getElementById('pin-error');
+
+    if (sessionStorage.getItem('scanner_unlocked') === 'true') {
+        document.getElementById('pin-gate').style.display = 'none';
+        document.getElementById('scanner-app').style.display = 'flex';
+    }
+
+    pinInput.addEventListener('input', () => {
+        if (pinInput.value.length === 4) {
+            if (pinInput.value === PIN) {
+                sessionStorage.setItem('scanner_unlocked', 'true');
+                document.getElementById('pin-gate').style.display = 'none';
+                document.getElementById('scanner-app').style.display = 'flex';
+            } else {
+                pinError.textContent = 'Wrong PIN';
+                pinInput.value = '';
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
