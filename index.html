@@ -218,6 +218,18 @@
             color: rgba(255,255,255,0.9);
         }
 
+        .mute-btn {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .mute-btn.muted { opacity: 0.4; }
+
         /* Stats bar */
         .stats-bar {
             display: grid;
@@ -326,6 +338,11 @@
             height: 2px;
             background: linear-gradient(90deg, transparent, var(--red), transparent);
             box-shadow: 0 0 12px var(--red-glow);
+            display: none;
+        }
+
+        .scan-line.active {
+            display: block;
             animation: scanMove 2.5s ease-in-out infinite;
         }
 
@@ -628,42 +645,94 @@
         .search-item-status.partial { color: var(--blue); background: var(--blue-bg); }
         .search-item-status.full { color: var(--green); background: var(--green-bg); }
 
-        /* Scan log */
-        .log-section {
+        /* Tabs */
+        .tab-section {
             background: var(--surface);
             border-top: 1px solid var(--surface-2);
         }
 
-        .log-header {
+        .tab-bar {
+            display: flex;
+            border-bottom: 1px solid var(--surface-3);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--text);
+            border-bottom-color: var(--red);
+        }
+
+        .tab-content {
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 6px 12px 10px;
+        }
+
+        .tab-content::-webkit-scrollbar { width: 0; }
+        .tab-content.active { display: block; }
+
+        /* Pending list */
+        .pending-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 10px 16px;
+            padding: 10px 10px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            background: var(--surface-2);
             cursor: pointer;
+            transition: background 0.1s;
         }
 
-        .log-header span {
+        .pending-item:active { background: var(--surface-3); }
+
+        .pending-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .pending-tickets {
             font-size: 11px;
-            color: var(--text-dim);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .log-toggle {
-            font-size: 12px;
             color: var(--text-muted);
-            transition: transform 0.2s;
+            margin-top: 1px;
         }
 
-        .log-list {
-            max-height: 150px;
-            overflow-y: auto;
-            padding: 0 12px 10px;
+        .pending-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            color: var(--amber);
+            background: var(--amber-bg);
         }
 
-        .log-list::-webkit-scrollbar { width: 0; }
+        .pending-empty {
+            text-align: center;
+            padding: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
 
+        /* Scan log */
         .log-entry {
             display: flex;
             align-items: center;
@@ -783,7 +852,10 @@
             </div>
             <span class="header-title">MATCH DAY</span>
         </div>
-        <span class="header-badge">Scanner</span>
+        <div style="display:flex;align-items:center;gap:8px">
+            <button class="mute-btn" id="mute-btn" onclick="window.toggleMute()">&#128264;</button>
+            <span class="header-badge">Scanner</span>
+        </div>
     </div>
 
     <div class="stats-bar">
@@ -834,12 +906,13 @@
         <input type="text" id="search-input" placeholder="Search name or ticket ID" autocomplete="off" />
     </div>
 
-    <div class="log-section">
-        <div class="log-header" onclick="toggleLog()">
-            <span>Scan Log</span>
-            <span class="log-toggle" id="log-toggle">&#9660;</span>
+    <div class="tab-section">
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('pending')">Pending</button>
+            <button class="tab-btn" onclick="switchTab('log')">Scan Log</button>
         </div>
-        <div class="log-list" id="log"></div>
+        <div class="tab-content active" id="tab-pending"></div>
+        <div class="tab-content" id="tab-log"></div>
     </div>
 
     <div class="app-footer">
@@ -850,6 +923,50 @@
 <script type="module">
     const GUESTS = {"19ca7b7f1bbe19c2": {"name": "Abbul Farooque", "email": "shaunabbul@gmail.com", "phone": "7507732260", "amount": 1000.0, "quantity": 2}, "19ca7f4f882cc5b2": {"name": "Gaurav Oswal", "email": "gauravoswall@gmail.com", "phone": "9604266106", "amount": 500.0, "quantity": 1}, "19ca9169518125e9": {"name": "Vyankatesh Deshpande", "email": "vygodisgreat2003@gmail.com", "phone": "7620023684", "amount": 2000.0, "quantity": 4}};
 
+    // Sound engine
+    let audioCtx = null;
+    let isMuted = localStorage.getItem('scanner_muted') === 'true';
+
+    function getAudioCtx() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx;
+    }
+
+    function playTone(freq, duration, type = 'sine') {
+        if (isMuted) return;
+        try {
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.value = 0.15;
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + duration);
+        } catch (e) {}
+    }
+
+    function playSuccess() { playTone(880, 0.15); setTimeout(() => playTone(1174, 0.2), 100); }
+    function playError() { playTone(330, 0.15, 'square'); setTimeout(() => playTone(220, 0.25, 'square'), 120); }
+    function playWarning() { playTone(440, 0.12); setTimeout(() => playTone(440, 0.12), 150); }
+
+    window.toggleMute = function() {
+        isMuted = !isMuted;
+        localStorage.setItem('scanner_muted', isMuted);
+        const btn = document.getElementById('mute-btn');
+        btn.innerHTML = isMuted ? '&#128263;' : '&#128264;';
+        btn.classList.toggle('muted', isMuted);
+    };
+
+    // Init mute state
+    if (isMuted) {
+        const btn = document.getElementById('mute-btn');
+        if (btn) { btn.innerHTML = '&#128263;'; btn.classList.add('muted'); }
+    }
+
     const scannedKey = 'arsenal_meetup_scanned';
     let scanned = JSON.parse(localStorage.getItem(scannedKey) || '{}');
 
@@ -857,7 +974,8 @@
     const checkedEl = document.getElementById('checked');
     const remainingEl = document.getElementById('remaining');
     const resultEl = document.getElementById('result');
-    const logEl = document.getElementById('log');
+    const logEl = document.getElementById('tab-log');
+    const pendingEl = document.getElementById('tab-pending');
 
     function updateStats() {
         let totalTickets = 0;
@@ -870,7 +988,40 @@
         checkedEl.textContent = checkedIn;
         remainingEl.textContent = totalTickets - checkedIn;
     }
+    function renderPending() {
+        const pending = [];
+        for (const [id, guest] of Object.entries(GUESTS)) {
+            const record = scanned[id];
+            const checkedIn = record ? record.count : 0;
+            const remaining = guest.quantity - checkedIn;
+            if (remaining > 0) {
+                pending.push({ id, name: guest.name, total: guest.quantity, remaining });
+            }
+        }
+        if (pending.length === 0) {
+            pendingEl.innerHTML = '<div class="pending-empty">Everyone is in!</div>';
+            return;
+        }
+        pending.sort((a, b) => a.name.localeCompare(b.name));
+        pendingEl.innerHTML = pending.map(p => {
+            const badge = p.remaining === p.total ? `${p.total} ticket${p.total > 1 ? 's' : ''}` : `${p.total - p.remaining}/${p.total} in`;
+            return `<div class="pending-item" onclick="window.showResult('${p.id}')">
+                <div><div class="pending-name">${p.name}</div><div class="pending-tickets">${p.total} ticket${p.total > 1 ? 's' : ''}</div></div>
+                <span class="pending-badge">${badge}</span>
+            </div>`;
+        }).join('');
+    }
+
+    window.switchTab = function(tab) {
+        document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', (tab === 'pending' && i === 0) || (tab === 'log' && i === 1));
+        });
+        document.getElementById('tab-pending').classList.toggle('active', tab === 'pending');
+        document.getElementById('tab-log').classList.toggle('active', tab === 'log');
+    };
+
     updateStats();
+    renderPending();
 
     function checkInGroup(id, count) {
         const guest = GUESTS[id];
@@ -887,13 +1038,15 @@
         if (record.count >= max) {
             resultEl.className = 'result-panel valid';
             resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in</div>`;
-            addLog(`${guest.name} (+${count}, ${record.count}/${max} complete)`, time, 'valid');
+            addLog(`${guest.name} - ${record.count}/${max}`, time, 'valid');
         } else {
             resultEl.className = 'result-panel partial';
             resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter</div>`;
-            addLog(`${guest.name} (+${count}, ${record.count}/${max})`, time, 'partial');
+            addLog(`${guest.name} - ${record.count}/${max}`, time, 'partial');
         }
         updateStats();
+        renderPending();
+        playSuccess();
         if (navigator.vibrate) navigator.vibrate(100);
     }
 
@@ -905,6 +1058,7 @@
             resultEl.className = 'result-panel invalid';
             resultEl.innerHTML = '<div class="result-icon">&#10007;</div><div class="result-status">NOT FOUND</div><div class="result-detail">QR not in guest list</div>';
             addLog(id.substring(0, 12), time, 'invalid');
+            playError();
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             return;
         }
@@ -916,7 +1070,8 @@
         if (record.count >= max) {
             resultEl.className = 'result-panel full';
             resultEl.innerHTML = `<div class="result-icon">&#9888;</div><div class="result-status">ALREADY IN</div><div class="result-counter">${record.count}/${max}</div><div class="result-name">${guest.name}</div><div class="result-detail">All ${max} ticket${max > 1 ? 's' : ''} used</div>`;
-            addLog(`${guest.name} (${record.count}/${max})`, time, 'full');
+            addLog(`${guest.name} - already in`, time, 'full');
+            playWarning();
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
             return;
         }
@@ -964,23 +1119,13 @@
             window.scanned = scanned;
             localStorage.setItem(scannedKey, JSON.stringify(scanned));
             updateStats();
+            renderPending();
             resultEl.className = 'result-panel';
             resultEl.innerHTML = '<p class="result-idle">Scans reset. Ready.</p>';
             logEl.innerHTML = '';
         }
     };
 
-    window.toggleLog = function() {
-        const log = document.getElementById('log');
-        const toggle = document.getElementById('log-toggle');
-        if (log.style.display === 'none') {
-            log.style.display = 'block';
-            toggle.innerHTML = '&#9660;';
-        } else {
-            log.style.display = 'none';
-            toggle.innerHTML = '&#9654;';
-        }
-    };
 
     // ---- On-demand camera ----
     let cameraStream = null;
@@ -1025,6 +1170,7 @@
             video.style.display = 'block';
             prompt.style.display = 'none';
             stopBtn.style.display = 'block';
+            document.querySelector('.scan-line').classList.add('active');
 
             // Position blur overlays after video is playing
             video.addEventListener('loadedmetadata', () => {
@@ -1098,6 +1244,7 @@
         video.srcObject = null;
         document.getElementById('camera-prompt').style.display = 'flex';
         document.getElementById('camera-stop').style.display = 'none';
+        document.querySelector('.scan-line').classList.remove('active');
     };
 
     // Position blur overlays on resize
