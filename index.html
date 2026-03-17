@@ -286,10 +286,23 @@
             pointer-events: none;
         }
 
+        /* Blur overlay - 4 regions around scan frame */
+        .blur-overlay {
+            position: absolute;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+        }
+        .blur-top { top: 0; left: 0; right: 0; }
+        .blur-bottom { bottom: 0; left: 0; right: 0; }
+        .blur-left { left: 0; }
+        .blur-right { right: 0; }
+
         .scan-frame {
             width: 220px;
             height: 220px;
             position: relative;
+            z-index: 2;
         }
 
         .scan-corner {
@@ -321,13 +334,59 @@
             50% { top: 88%; }
         }
 
-        .viewfinder-dim {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='white'/%3E%3Crect x='50%25' y='50%25' width='220' height='220' rx='12' transform='translate(-110,-110)' fill='black'/%3E%3C/svg%3E");
-            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='white'/%3E%3Crect x='50%25' y='50%25' width='220' height='220' rx='12' transform='translate(-110,-110)' fill='black'/%3E%3C/svg%3E");
+        /* On-demand camera toggle */
+        .camera-prompt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 3;
+            position: relative;
         }
+
+        .camera-prompt-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--red);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: transform 0.15s;
+        }
+
+        .camera-prompt:active .camera-prompt-icon {
+            transform: scale(0.92);
+        }
+
+        .camera-prompt-text {
+            font-size: 13px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        .camera-stop {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 6px 14px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--surface-3);
+            border-radius: 20px;
+            color: var(--text-dim);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 5;
+            backdrop-filter: blur(4px);
+        }
+
+        .camera-stop:active { background: rgba(0,0,0,0.8); }
 
         .camera-off {
             text-align: center;
@@ -376,6 +435,8 @@
 
         .result-panel.full { background: var(--amber-bg); }
         .result-panel.full::before { background: radial-gradient(circle at 50% 0%, rgba(255,145,0,0.1), transparent 70%); opacity: 1; }
+
+        .result-panel.picking { background: var(--surface-2); }
 
         .result-icon {
             font-size: 36px;
@@ -430,17 +491,68 @@
             font-size: 14px;
         }
 
-        /* Manual input */
-        .manual-bar {
+        /* Group picker */
+        .group-picker {
             display: flex;
-            padding: 10px 12px;
+            flex-wrap: wrap;
             gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .group-picker-label {
+            width: 100%;
+            font-size: 12px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .group-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            border: 2px solid var(--surface-3);
+            background: var(--surface);
+            color: var(--text);
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .group-btn:active {
+            transform: scale(0.93);
+        }
+
+        .group-btn:hover {
+            border-color: var(--green);
+            background: var(--green-bg);
+        }
+
+        .group-btn.all {
+            width: auto;
+            padding: 0 20px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        /* Search bar with autocomplete */
+        .search-wrap {
+            position: relative;
+            padding: 10px 12px;
             background: var(--surface-2);
             border-top: 1px solid var(--surface-3);
         }
 
-        .manual-bar input {
-            flex: 1;
+        .search-wrap input {
+            width: 100%;
             padding: 12px 14px;
             border: 1px solid var(--surface-3);
             border-radius: 10px;
@@ -452,33 +564,69 @@
             transition: border-color 0.2s;
         }
 
-        .manual-bar input:focus {
+        .search-wrap input:focus {
             border-color: var(--red);
         }
 
-        .manual-bar input::placeholder {
+        .search-wrap input::placeholder {
             color: var(--text-muted);
         }
 
-        .manual-bar button {
-            padding: 12px 18px;
-            background: var(--red);
-            color: white;
-            border: none;
+        .search-results {
+            position: absolute;
+            left: 12px;
+            right: 12px;
+            bottom: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--surface-3);
             border-radius: 10px;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: background 0.15s;
-            min-width: 60px;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+            z-index: 20;
         }
 
-        .manual-bar button:active {
-            background: var(--red-dark);
-            transform: scale(0.97);
+        .search-results::-webkit-scrollbar { width: 0; }
+
+        .search-results.show { display: block; }
+
+        .search-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--surface-3);
+            transition: background 0.1s;
         }
+
+        .search-item:last-child { border-bottom: none; }
+        .search-item:active { background: var(--surface-3); }
+
+        .search-item-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .search-item-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .search-item-status {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .search-item-status.none { color: var(--text-dim); background: var(--surface-3); }
+        .search-item-status.partial { color: var(--blue); background: var(--blue-bg); }
+        .search-item-status.full { color: var(--green); background: var(--green-bg); }
 
         /* Scan log */
         .log-section {
@@ -654,9 +802,14 @@
     </div>
 
     <div class="viewfinder" id="video-container">
-        <video id="video" autoplay playsinline></video>
+        <video id="video" autoplay playsinline style="display:none"></video>
+        <!-- Blur overlays positioned by JS -->
+        <div class="blur-overlay blur-top" id="blur-top"></div>
+        <div class="blur-overlay blur-bottom" id="blur-bottom"></div>
+        <div class="blur-overlay blur-left" id="blur-left"></div>
+        <div class="blur-overlay blur-right" id="blur-right"></div>
         <div class="viewfinder-overlay">
-            <div class="scan-frame">
+            <div class="scan-frame" id="scan-frame">
                 <div class="scan-corner tl"></div>
                 <div class="scan-corner tr"></div>
                 <div class="scan-corner bl"></div>
@@ -664,15 +817,21 @@
                 <div class="scan-line"></div>
             </div>
         </div>
+        <!-- On-demand camera prompt -->
+        <div class="camera-prompt" id="camera-prompt" onclick="window.startScanner()">
+            <div class="camera-prompt-icon">&#128247;</div>
+            <div class="camera-prompt-text">Tap to scan QR</div>
+        </div>
+        <button class="camera-stop" id="camera-stop" onclick="window.stopScanner()" style="display:none">Stop camera</button>
     </div>
 
     <div class="result-panel" id="result">
-        <p class="result-idle">Point camera at a QR ticket</p>
+        <p class="result-idle">Scan a QR or search below</p>
     </div>
 
-    <div class="manual-bar">
-        <input type="text" id="manual-id" placeholder="Ticket ID" />
-        <button onclick="manualCheck()">Check</button>
+    <div class="search-wrap">
+        <div class="search-results" id="search-results"></div>
+        <input type="text" id="search-input" placeholder="Search name or ticket ID" autocomplete="off" />
     </div>
 
     <div class="log-section">
@@ -688,7 +847,6 @@
     </div>
 </div>
 
-<!-- TEST DATA -->
 <script type="module">
     const GUESTS = {"19ca7b7f1bbe19c2": {"name": "Abbul Farooque", "email": "shaunabbul@gmail.com", "phone": "7507732260", "amount": 1000.0, "quantity": 2}, "19ca7f4f882cc5b2": {"name": "Gaurav Oswal", "email": "gauravoswall@gmail.com", "phone": "9604266106", "amount": 500.0, "quantity": 1}, "19ca9169518125e9": {"name": "Vyankatesh Deshpande", "email": "vygodisgreat2003@gmail.com", "phone": "7620023684", "amount": 2000.0, "quantity": 4}};
 
@@ -698,6 +856,8 @@
     const totalEl = document.getElementById('total');
     const checkedEl = document.getElementById('checked');
     const remainingEl = document.getElementById('remaining');
+    const resultEl = document.getElementById('result');
+    const logEl = document.getElementById('log');
 
     function updateStats() {
         let totalTickets = 0;
@@ -712,8 +872,30 @@
     }
     updateStats();
 
-    const resultEl = document.getElementById('result');
-    const logEl = document.getElementById('log');
+    function checkInGroup(id, count) {
+        const guest = GUESTS[id];
+        if (!guest) return;
+        if (!scanned[id]) scanned[id] = { count: 0, times: [] };
+        const record = scanned[id];
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        record.count += count;
+        record.times.push(time);
+        localStorage.setItem(scannedKey, JSON.stringify(scanned));
+
+        const max = guest.quantity;
+        if (record.count >= max) {
+            resultEl.className = 'result-panel valid';
+            resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in</div>`;
+            addLog(`${guest.name} (+${count}, ${record.count}/${max} complete)`, time, 'valid');
+        } else {
+            resultEl.className = 'result-panel partial';
+            resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter</div>`;
+            addLog(`${guest.name} (+${count}, ${record.count}/${max})`, time, 'partial');
+        }
+        updateStats();
+        if (navigator.vibrate) navigator.vibrate(100);
+    }
 
     function showResult(id) {
         const guest = GUESTS[id];
@@ -739,25 +921,28 @@
             return;
         }
 
-        record.count += 1;
-        record.times.push(time);
-        localStorage.setItem(scannedKey, JSON.stringify(scanned));
+        const remaining = max - record.count;
 
-        if (record.count < max) {
-            resultEl.className = 'result-panel partial';
-            resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter</div>`;
-            addLog(`${guest.name} (${record.count}/${max})`, time, 'partial');
-        } else {
-            resultEl.className = 'result-panel valid';
-            if (max === 1) {
-                resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div>`;
-            } else {
-                resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in</div>`;
-            }
-            addLog(`${guest.name}${max > 1 ? ` (${record.count}/${max})` : ''}`, time, 'valid');
+        // Single ticket or only 1 remaining: auto check-in
+        if (max === 1 || remaining === 1) {
+            checkInGroup(id, 1);
+            return;
         }
-        updateStats();
-        if (navigator.vibrate) navigator.vibrate(100);
+
+        // Multi-ticket: show group picker
+        resultEl.className = 'result-panel picking';
+        let pickerHTML = `<div class="result-name">${guest.name}</div>`;
+        pickerHTML += `<div class="result-detail">${remaining} of ${max} remaining</div>`;
+        pickerHTML += `<div class="group-picker"><div class="group-picker-label">How many arriving?</div>`;
+        for (let i = 1; i <= remaining; i++) {
+            if (i < remaining) {
+                pickerHTML += `<button class="group-btn" onclick="window.checkInGroup('${id}', ${i})">${i}</button>`;
+            } else {
+                pickerHTML += `<button class="group-btn all" onclick="window.checkInGroup('${id}', ${i})">All ${i}</button>`;
+            }
+        }
+        pickerHTML += `</div>`;
+        resultEl.innerHTML = pickerHTML;
     }
 
     function addLog(name, time, cls) {
@@ -767,11 +952,16 @@
         logEl.prepend(entry);
     }
 
+    // Expose to global
     window.showResult = showResult;
+    window.checkInGroup = checkInGroup;
+    window.GUESTS = GUESTS;
+    window.scanned = scanned;
 
     window.resetScans = function() {
         if (confirm('Reset all scans? This clears check-in data.')) {
             scanned = {};
+            window.scanned = scanned;
             localStorage.setItem(scannedKey, JSON.stringify(scanned));
             updateStats();
             resultEl.className = 'result-panel';
@@ -792,20 +982,61 @@
         }
     };
 
-    async function startCamera() {
+    // ---- On-demand camera ----
+    let cameraStream = null;
+    let scanInterval = null;
+
+    function positionBlurOverlays() {
+        const container = document.getElementById('video-container');
+        const frame = document.getElementById('scan-frame');
+        if (!container || !frame) return;
+
+        const cRect = container.getBoundingClientRect();
+        const fRect = frame.getBoundingClientRect();
+
+        const top = fRect.top - cRect.top;
+        const bottom = cRect.bottom - fRect.bottom;
+        const left = fRect.left - cRect.left;
+        const right = cRect.right - fRect.right;
+        const frameH = fRect.height;
+
+        document.getElementById('blur-top').style.height = top + 'px';
+        document.getElementById('blur-bottom').style.height = bottom + 'px';
+        const blurLeft = document.getElementById('blur-left');
+        blurLeft.style.top = top + 'px';
+        blurLeft.style.height = frameH + 'px';
+        blurLeft.style.width = left + 'px';
+        const blurRight = document.getElementById('blur-right');
+        blurRight.style.top = top + 'px';
+        blurRight.style.height = frameH + 'px';
+        blurRight.style.width = right + 'px';
+    }
+
+    window.startScanner = async function() {
+        const prompt = document.getElementById('camera-prompt');
+        const video = document.getElementById('video');
+        const stopBtn = document.getElementById('camera-stop');
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            cameraStream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' }
             });
-            const video = document.getElementById('video');
-            video.srcObject = stream;
+            video.srcObject = cameraStream;
+            video.style.display = 'block';
+            prompt.style.display = 'none';
+            stopBtn.style.display = 'block';
+
+            // Position blur overlays after video is playing
+            video.addEventListener('loadedmetadata', () => {
+                setTimeout(positionBlurOverlays, 100);
+            }, { once: true });
 
             if ('BarcodeDetector' in window) {
                 const detector = new BarcodeDetector({ formats: ['qr_code'] });
                 let lastScan = '';
                 let lastScanTime = 0;
 
-                setInterval(async () => {
+                scanInterval = setInterval(async () => {
                     try {
                         const barcodes = await detector.detect(video);
                         if (barcodes.length > 0) {
@@ -828,7 +1059,7 @@
                     let lastScan = '';
                     let lastScanTime = 0;
 
-                    setInterval(() => {
+                    scanInterval = setInterval(() => {
                         if (video.readyState === video.HAVE_ENOUGH_DATA) {
                             canvas.width = video.videoWidth;
                             canvas.height = video.videoHeight;
@@ -849,12 +1080,29 @@
                 document.head.appendChild(script);
             }
         } catch (err) {
-            document.getElementById('video-container').innerHTML =
-                '<div class="camera-off"><div class="camera-off-icon">&#128247;</div><p>Camera not available<br><small>Use manual input below</small></p></div>';
+            prompt.innerHTML = '<div class="camera-off"><div class="camera-off-icon">&#128247;</div><p>Camera not available<br><small>Use search below</small></p></div>';
         }
-    }
+    };
 
-    startCamera();
+    window.stopScanner = function() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+        if (scanInterval) {
+            clearInterval(scanInterval);
+            scanInterval = null;
+        }
+        const video = document.getElementById('video');
+        video.style.display = 'none';
+        video.srcObject = null;
+        document.getElementById('camera-prompt').style.display = 'flex';
+        document.getElementById('camera-stop').style.display = 'none';
+    };
+
+    // Position blur overlays on resize
+    window.addEventListener('resize', positionBlurOverlays);
+    setTimeout(positionBlurOverlays, 200);
 </script>
 
 <script>
@@ -890,18 +1138,83 @@
         }
     });
 
-    // Manual check
-    function manualCheck() {
-        const input = document.getElementById('manual-id');
-        const value = input.value.trim();
-        if (value) {
-            window.showResult(value);
-            input.value = '';
-        }
-    }
+    // Search with autocomplete
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
 
-    document.getElementById('manual-id').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') manualCheck();
+    searchInput.addEventListener('input', () => {
+        const query = searchInput.value.trim().toLowerCase();
+        if (query.length < 2) {
+            searchResults.classList.remove('show');
+            return;
+        }
+
+        const guests = window.GUESTS || {};
+        const scannedData = window.scanned || {};
+        const matches = [];
+
+        for (const [id, guest] of Object.entries(guests)) {
+            const nameMatch = guest.name.toLowerCase().includes(query);
+            const idMatch = id.toLowerCase().includes(query);
+            if (nameMatch || idMatch) {
+                const record = scannedData[id];
+                const checkedIn = record ? record.count : 0;
+                matches.push({ id, guest, checkedIn });
+            }
+        }
+
+        if (matches.length === 0) {
+            searchResults.classList.remove('show');
+            return;
+        }
+
+        searchResults.innerHTML = matches.slice(0, 8).map(m => {
+            const remaining = m.guest.quantity - m.checkedIn;
+            let statusClass, statusText;
+            if (m.checkedIn === 0) {
+                statusClass = 'none';
+                statusText = `${m.guest.quantity} ticket${m.guest.quantity > 1 ? 's' : ''}`;
+            } else if (remaining > 0) {
+                statusClass = 'partial';
+                statusText = `${m.checkedIn}/${m.guest.quantity} in`;
+            } else {
+                statusClass = 'full';
+                statusText = 'All in';
+            }
+            return `<div class="search-item" data-id="${m.id}">
+                <div><div class="search-item-name">${m.guest.name}</div><div class="search-item-meta">${m.guest.quantity} ticket${m.guest.quantity > 1 ? 's' : ''}</div></div>
+                <span class="search-item-status ${statusClass}">${statusText}</span>
+            </div>`;
+        }).join('');
+        searchResults.classList.add('show');
+    });
+
+    searchResults.addEventListener('click', (e) => {
+        const item = e.target.closest('.search-item');
+        if (item) {
+            const id = item.dataset.id;
+            searchInput.value = '';
+            searchResults.classList.remove('show');
+            window.showResult(id);
+        }
+    });
+
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const value = searchInput.value.trim();
+            if (value) {
+                searchResults.classList.remove('show');
+                window.showResult(value);
+                searchInput.value = '';
+            }
+        }
+    });
+
+    // Hide search results on outside tap
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-wrap')) {
+            searchResults.classList.remove('show');
+        }
     });
 
     // Keep PIN input focused on the gate screen
