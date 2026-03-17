@@ -1012,7 +1012,7 @@
         pending.sort((a, b) => a.name.localeCompare(b.name));
         pendingEl.innerHTML = pending.map(p => {
             const badge = p.remaining === p.total ? `${p.total} ticket${p.total > 1 ? 's' : ''}` : `${p.total - p.remaining}/${p.total} in`;
-            return `<div class="pending-item" onclick="window.showResult('${p.id}')">
+            return `<div class="pending-item" onclick="window.showResult('${p.id}', 'manual')">
                 <div><div class="pending-name">${p.name}</div><div class="pending-tickets">${p.total} ticket${p.total > 1 ? 's' : ''}</div></div>
                 <span class="pending-badge">${badge}</span>
             </div>`;
@@ -1055,9 +1055,10 @@
         renderPending();
         playSuccess();
         if (navigator.vibrate) navigator.vibrate(100);
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    function showResult(id) {
+    function showResult(id, source) {
         const guest = GUESTS[id];
         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -1067,6 +1068,7 @@
             addLog(id.substring(0, 12), time, 'invalid');
             playError();
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
 
@@ -1080,31 +1082,38 @@
             addLog(`${guest.name} - already in`, time, 'full');
             playWarning();
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
 
         const remaining = max - record.count;
 
-        // Single ticket or only 1 remaining: auto check-in
-        if (max === 1 || remaining === 1) {
+        // QR scan: auto check-in for single ticket or 1 remaining
+        if (source !== 'manual' && (max === 1 || remaining === 1)) {
             checkInGroup(id, 1);
             return;
         }
 
-        // Multi-ticket: show group picker
+        // Show picker (always for manual, multi-ticket for QR)
         resultEl.className = 'result-panel picking';
         let pickerHTML = `<div class="result-name">${guest.name}</div>`;
         pickerHTML += `<div class="result-detail">${remaining} of ${max} remaining</div>`;
-        pickerHTML += `<div class="group-picker"><div class="group-picker-label">How many arriving?</div>`;
-        for (let i = 1; i <= remaining; i++) {
-            if (i < remaining) {
-                pickerHTML += `<button class="group-btn" onclick="window.checkInGroup('${id}', ${i})">${i}</button>`;
-            } else {
-                pickerHTML += `<button class="group-btn all" onclick="window.checkInGroup('${id}', ${i})">All ${i}</button>`;
+        pickerHTML += `<div class="group-picker">`;
+        if (remaining === 1) {
+            pickerHTML += `<button class="group-btn all" onclick="window.checkInGroup('${id}', 1)">Check in</button>`;
+        } else {
+            pickerHTML += `<div class="group-picker-label">How many arriving?</div>`;
+            for (let i = 1; i <= remaining; i++) {
+                if (i < remaining) {
+                    pickerHTML += `<button class="group-btn" onclick="window.checkInGroup('${id}', ${i})">${i}</button>`;
+                } else {
+                    pickerHTML += `<button class="group-btn all" onclick="window.checkInGroup('${id}', ${i})">All ${i}</button>`;
+                }
             }
         }
         pickerHTML += `</div>`;
         resultEl.innerHTML = pickerHTML;
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function addLog(name, time, cls) {
