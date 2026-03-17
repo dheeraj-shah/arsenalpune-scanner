@@ -1019,7 +1019,10 @@
         }).join('');
     }
 
+    function haptic(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
+
     window.switchTab = function(tab) {
+        haptic(10);
         document.querySelectorAll('.tab-btn').forEach((btn, i) => {
             btn.classList.toggle('active', (tab === 'pending' && i === 0) || (tab === 'log' && i === 1));
         });
@@ -1054,7 +1057,7 @@
         updateStats();
         renderPending();
         playSuccess();
-        if (navigator.vibrate) navigator.vibrate(100);
+        haptic(100);
         resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
@@ -1067,7 +1070,7 @@
             resultEl.innerHTML = '<div class="result-icon">&#10007;</div><div class="result-status">NOT FOUND</div><div class="result-detail">QR not in guest list</div>';
             addLog(id.substring(0, 12), time, 'invalid');
             playError();
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            haptic([100, 50, 100]);
             resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
@@ -1081,7 +1084,7 @@
             resultEl.innerHTML = `<div class="result-icon">&#9888;</div><div class="result-status">ALREADY IN</div><div class="result-counter">${record.count}/${max}</div><div class="result-name">${guest.name}</div><div class="result-detail">All ${max} ticket${max > 1 ? 's' : ''} used</div>`;
             addLog(`${guest.name} - already in`, time, 'full');
             playWarning();
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            haptic([200, 100, 200]);
             resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
@@ -1095,6 +1098,7 @@
         }
 
         // Show picker (always for manual, multi-ticket for QR)
+        haptic(30);
         resultEl.className = 'result-panel picking';
         let pickerHTML = `<div class="result-name">${guest.name}</div>`;
         pickerHTML += `<div class="result-detail">${remaining} of ${max} remaining</div>`;
@@ -1290,10 +1294,12 @@
 
         if (val.length === 4) {
             if (val === PIN) {
+                if (navigator.vibrate) navigator.vibrate(50);
                 sessionStorage.setItem('scanner_unlocked', 'true');
                 document.getElementById('pin-gate').style.display = 'none';
                 document.getElementById('scanner-app').style.display = 'flex';
             } else {
+                if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
                 dots.forEach(d => { d.classList.remove('filled'); d.classList.add('error'); });
                 pinError.textContent = 'Wrong PIN';
                 setTimeout(() => { pinInput.value = ''; dots.forEach(d => d.classList.remove('error')); }, 500);
