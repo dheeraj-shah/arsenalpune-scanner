@@ -929,8 +929,15 @@
 
     function getAudioCtx() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         return audioCtx;
     }
+
+    // Unlock audio on first user tap (mobile requirement)
+    document.addEventListener('click', function unlockAudio() {
+        getAudioCtx();
+        document.removeEventListener('click', unlockAudio);
+    }, { once: true });
 
     function playTone(freq, duration, type = 'sine') {
         if (isMuted) return;
@@ -940,7 +947,7 @@
             const gain = ctx.createGain();
             osc.type = type;
             osc.frequency.value = freq;
-            gain.gain.value = 0.15;
+            gain.gain.value = 0.4;
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
             osc.connect(gain);
             gain.connect(ctx.destination);
