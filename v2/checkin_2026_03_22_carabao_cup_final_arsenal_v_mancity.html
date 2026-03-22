@@ -1651,6 +1651,7 @@
         record.count += count;
         record.times.push(time);
         localStorage.setItem(scannedKey, JSON.stringify(scanned));
+        if (typeof queueSyncEvent === 'function') queueSyncEvent(id, count, 'checkin');
 
         const max = guest.quantity;
         if (record.count >= max) {
@@ -1794,6 +1795,7 @@
             scanned = {};
             window.scanned = scanned;
             localStorage.setItem(scannedKey, JSON.stringify(scanned));
+            if (typeof queueSyncEvent === 'function') queueSyncEvent('__ALL__', 0, 'reset');
             updateStats();
             renderPending();
             resultEl.className = 'result-panel';
@@ -1938,6 +1940,7 @@
     if (sessionStorage.getItem('scanner_unlocked') === 'true') {
         document.getElementById('pin-gate').style.display = 'none';
         document.getElementById('scanner-app').style.display = 'flex';
+        if (typeof startSync === 'function') setTimeout(startSync, 100);
     }
 
     pinInput.addEventListener('input', () => {
@@ -1954,6 +1957,7 @@
                 sessionStorage.setItem('scanner_unlocked', 'true');
                 document.getElementById('pin-gate').style.display = 'none';
                 document.getElementById('scanner-app').style.display = 'flex';
+                if (typeof startSync === 'function') startSync();
             } else {
                 if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
                 dots.forEach(d => { d.classList.remove('filled'); d.classList.add('error'); });
@@ -2270,6 +2274,93 @@ window.exportCSV = function() {
     a.click();
     URL.revokeObjectURL(url);
 };
+</script>
+<script>
+// --- Multi-device sync via Google Sheets ---
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbxQ8sLoWCIFV-zcFExLY4TxxWeDyz2gk4n6cl5SV9wtNuRoWQFYu1QXjJv_lO4153iA/exec';
+const MATCH_SLUG = '2026_03_22_carabao_cup_final_arsenal_v_mancity';
+const DEVICE_ID = localStorage.getItem('arsenal_device_id') || (() => {
+    const id = crypto.randomUUID();
+    localStorage.setItem('arsenal_device_id', id);
+    return id;
+})();
+let syncQueue = JSON.parse(localStorage.getItem(scannedKey + '_queue') || '[]');
+let syncStatus = 'unknown';
+
+function updateSyncDot(status) {
+    syncStatus = status;
+    const dot = document.getElementById('sync-dot');
+    if (dot) dot.className = 'sync-dot ' + status;
+}
+
+async function flushSyncQueue() {
+    if (syncQueue.length === 0) { updateSyncDot('synced'); return; }
+    updateSyncDot('pending');
+    const batch = [...syncQueue];
+    try {
+        await fetch(SYNC_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ events: batch })
+        });
+        // no-cors means we can't read the response, assume success if no error
+        syncQueue = syncQueue.slice(batch.length);
+        localStorage.setItem(scannedKey + '_queue', JSON.stringify(syncQueue));
+        updateSyncDot(syncQueue.length === 0 ? 'synced' : 'pending');
+    } catch (e) {
+        updateSyncDot('offline');
+    }
+}
+
+async function pullRemoteState() {
+    try {
+        const resp = await fetch(SYNC_URL + '?slug=' + encodeURIComponent(MATCH_SLUG));
+        if (!resp.ok) return;
+        const remote = await resp.json();
+        let changed = false;
+        for (const [id, data] of Object.entries(remote)) {
+            if (!window.scanned[id] || data.count > window.scanned[id].count) {
+                window.scanned[id] = { count: data.count, times: data.times || [] };
+                changed = true;
+            }
+        }
+        if (changed) {
+            localStorage.setItem(scannedKey, JSON.stringify(window.scanned));
+            updateStats();
+            renderPending();
+            if (typeof updateFilterCounts === 'function') updateFilterCounts();
+        }
+        updateSyncDot('synced');
+    } catch (e) {
+        updateSyncDot('offline');
+    }
+}
+
+function queueSyncEvent(guestId, count, action) {
+    const event = {
+        slug: MATCH_SLUG,
+        guest_id: guestId,
+        count: count,
+        device_id: DEVICE_ID,
+        action: action,
+        time: new Date().toISOString()
+    };
+    syncQueue.push(event);
+    localStorage.setItem(scannedKey + '_queue', JSON.stringify(syncQueue));
+    flushSyncQueue();
+}
+
+let syncStarted = false;
+function startSync() {
+    if (syncStarted) return;
+    syncStarted = true;
+    pullRemoteState().then(() => flushSyncQueue());
+    setInterval(() => {
+        pullRemoteState();
+        flushSyncQueue();
+    }, 12000);
+}
 </script>
 </body>
 </html>
