@@ -2298,15 +2298,26 @@ async function flushSyncQueue() {
     updateSyncDot('pending');
     const batch = [...syncQueue];
     try {
-        await fetch(SYNC_URL, {
+        const resp = await fetch(SYNC_URL, {
             method: 'POST',
-            mode: 'no-cors',
+            redirect: 'follow',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ events: batch })
         });
-        // no-cors means we can't read the response, assume success if no error
+        const result = await resp.json();
         syncQueue = syncQueue.slice(batch.length);
         localStorage.setItem(scannedKey + '_queue', JSON.stringify(syncQueue));
+        // merge remote state from POST response
+        if (result) {
+            for (const [id, data] of Object.entries(result)) {
+                if (!window.scanned[id] || data.count > window.scanned[id].count) {
+                    window.scanned[id] = { count: data.count, times: data.times || [] };
+                }
+            }
+            localStorage.setItem(scannedKey, JSON.stringify(window.scanned));
+            updateStats();
+            renderPending();
+        }
         updateSyncDot(syncQueue.length === 0 ? 'synced' : 'pending');
     } catch (e) {
         updateSyncDot('offline');
