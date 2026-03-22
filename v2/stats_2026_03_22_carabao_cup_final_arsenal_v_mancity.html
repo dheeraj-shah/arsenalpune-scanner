@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stats - Arsenal vs Manchester City</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --red: #EF0107;
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --surface-2: #1c1c1c;
+            --surface-3: #252525;
+            --text: #ffffff;
+            --text-dim: #777;
+            --green: #00C853;
+            --amber: #FF9100;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+            text-align: center;
+            -webkit-font-smoothing: antialiased;
+        }
+        .logo { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px; }
+        .match-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 42px;
+            letter-spacing: 3px;
+            line-height: 1;
+        }
+        .match-comp {
+            font-size: 14px;
+            color: var(--text-dim);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .match-meta {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-top: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px 12px;
+        }
+        .stat-num {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 56px;
+            line-height: 1;
+        }
+        .stat-num.green { color: var(--green); }
+        .stat-num.amber { color: var(--amber); }
+        .stat-lbl {
+            font-size: 11px;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .progress-wrap {
+            margin-top: 32px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .progress-bar {
+            height: 8px;
+            background: var(--surface-2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--green);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .progress-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+        .breakdown {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        .updated {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 32px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <img class="logo" src="https://drive.google.com/uc?export=view&id=1FLUcqsjxM3uPmgs5IGhNmkbTF81z0E6J" alt="Arsenal Pune SC" />
+    <div class="match-title">ARSENAL VS MANCHESTER CITY</div>
+    <div class="match-comp">Carabao Cup</div>
+    <div class="match-meta">📍 FC Road Social · 🕘 9:00 PM</div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-num" id="total">90</div>
+            <div class="stat-lbl">Tickets</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num green" id="checked">0</div>
+            <div class="stat-lbl">Checked In</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num amber" id="remaining">90</div>
+            <div class="stat-lbl">Remaining</div>
+        </div>
+    </div>
+
+    <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+        <div class="progress-label" id="progress-label">0% checked in</div>
+    </div>
+
+    <div class="breakdown">
+        <span>🟡 37 paid members</span>
+        <span>⚪ 33 paid guests</span>
+        <span>⚫ 65 unpaid</span>
+    </div>
+
+    <div class="updated" id="updated">Waiting for data...</div>
+
+    <script>
+        const TOTAL = 90;
+        const scannedKey = 'arsenal_checkin_2026_03_22_carabao_cup_final_arsenal_v_mancity';
+        const SYNC_URL = '';
+        const MATCH_SLUG = '2026_03_22_carabao_cup_final_arsenal_v_mancity';
+
+        function updateUI(scanned) {
+            let checkedIn = 0;
+            for (const record of Object.values(scanned)) {
+                checkedIn += record.count || 0;
+            }
+            const remaining = TOTAL - checkedIn;
+            const pct = TOTAL > 0 ? Math.round((checkedIn / TOTAL) * 100) : 0;
+
+            document.getElementById('checked').textContent = checkedIn;
+            document.getElementById('remaining').textContent = remaining;
+            document.getElementById('progress').style.width = pct + '%';
+            document.getElementById('progress-label').textContent = pct + '% checked in';
+            document.getElementById('updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+        }
+
+        async function refresh() {
+            if (SYNC_URL) {
+                try {
+                    const resp = await fetch(SYNC_URL + '?slug=' + encodeURIComponent(MATCH_SLUG));
+                    if (resp.ok) {
+                        const remote = await resp.json();
+                        updateUI(remote);
+                        return;
+                    }
+                } catch (e) {}
+            }
+            // Fallback to localStorage
+            const scanned = JSON.parse(localStorage.getItem(scannedKey) || '{}');
+            updateUI(scanned);
+        }
+
+        refresh();
+        setInterval(refresh, 3000);
+    </script>
+</body>
+</html>
