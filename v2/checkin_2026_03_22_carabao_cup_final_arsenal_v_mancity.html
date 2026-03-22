@@ -2351,15 +2351,47 @@ function queueSyncEvent(guestId, count, action) {
     flushSyncQueue();
 }
 
+async function pullRemoteGuests() {
+    try {
+        const resp = await fetch(SYNC_URL + '?type=guests&slug=' + encodeURIComponent(MATCH_SLUG));
+        if (!resp.ok) return;
+        const remote = await resp.json();
+        if (Object.keys(remote).length === 0) return;
+        // Cache in localStorage
+        localStorage.setItem(scannedKey + '_guests', JSON.stringify(remote));
+        // Replace window.GUESTS and re-render
+        window.GUESTS = remote;
+        updateStats();
+        renderPending();
+        if (typeof updateFilterCounts === 'function') updateFilterCounts();
+    } catch (e) {}
+}
+
 let syncStarted = false;
 function startSync() {
     if (syncStarted) return;
     syncStarted = true;
+    // Load cached guests first for speed, then fetch fresh
+    const cachedGuests = localStorage.getItem(scannedKey + '_guests');
+    if (cachedGuests) {
+        try {
+            const parsed = JSON.parse(cachedGuests);
+            if (Object.keys(parsed).length > 0) {
+                window.GUESTS = parsed;
+                updateStats();
+                renderPending();
+                if (typeof updateFilterCounts === 'function') updateFilterCounts();
+            }
+        } catch(e) {}
+    }
+    pullRemoteGuests();
     pullRemoteState().then(() => flushSyncQueue());
     setInterval(() => {
         pullRemoteState();
         flushSyncQueue();
     }, 12000);
+    // Refresh guests less frequently (every 60s)
+    setInterval(pullRemoteGuests, 60000);
 }
 </script>
 </body>

@@ -8,11 +8,13 @@
  *   4. Execute as: Me, Who has access: Anyone
  *   5. Copy the URL and pass it to generate_checkin.py --sync-url
  *
- * Sheet setup: Create a sheet named "Log" with headers in row 1:
- *   timestamp | match_slug | guest_id | count | device_id | action
+ * Sheet setup:
+ *   "Log" sheet: timestamp | match_slug | guest_id | count | device_id | action
+ *   "Guests" sheet: guest_id | name | email | phone | amount | quantity | status | screenings | match_slug
  */
 
 var SHEET_NAME = 'Log';
+var GUESTS_SHEET = 'Guests';
 
 function getLogSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -31,10 +33,55 @@ function getLogSheet() {
  */
 function doGet(e) {
   var slug = (e && e.parameter && e.parameter.slug) || '';
-  var result = aggregateLog(slug);
+  var type = (e && e.parameter && e.parameter.type) || 'checkins';
+
+  var result;
+  if (type === 'guests') {
+    result = getGuests(slug);
+  } else {
+    result = aggregateLog(slug);
+  }
+
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Read guests from Guests sheet for a match slug.
+ * Returns: { "guest_id": { name, email, phone, amount, quantity, status, screenings } }
+ */
+function getGuests(slug) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(GUESTS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(GUESTS_SHEET);
+    sheet.appendRow(['guest_id', 'name', 'email', 'phone', 'amount', 'quantity', 'status', 'screenings', 'match_slug']);
+    return {};
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var result = {};
+
+  // Headers: guest_id | name | email | phone | amount | quantity | status | screenings | match_slug
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var rowSlug = String(row[8]);
+    if (slug && rowSlug !== slug) continue;
+
+    var guestId = String(row[0]);
+    result[guestId] = {
+      name: String(row[1]),
+      email: String(row[2]),
+      phone: String(row[3]),
+      amount: Number(row[4]) || 0,
+      quantity: Number(row[5]) || 1,
+      status: String(row[6]),
+      screenings: Number(row[7]) || 0
+    };
+  }
+
+  return result;
 }
 
 /**
