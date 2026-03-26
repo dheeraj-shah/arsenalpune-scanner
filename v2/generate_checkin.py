@@ -221,7 +221,7 @@ def get_match_info(conn, slug):
     }
 
 
-def generate_html(attendees, match_info, slug, sync_url=""):
+def generate_html(attendees, match_info, slug, sync_url="", sync_token=""):
     """Generate check-in HTML from the scanner template."""
     # Build guest data in the format the scanner template expects
     # Key = msg_id, Value = {name, email, phone, amount, quantity}
@@ -255,8 +255,7 @@ def generate_html(attendees, match_info, slug, sync_url=""):
     with open(TEMPLATE_PATH) as f:
         html = f.read()
 
-    # Replace guest data placeholder
-    html = html.replace("__GUEST_DATA__", json.dumps(guest_data))
+    # Guest data is now fetched from Google Sheets at runtime (pullRemoteGuests)
 
     # Customize the header for this specific event
     html = html.replace(
@@ -281,12 +280,12 @@ def generate_html(attendees, match_info, slug, sync_url=""):
         .member-badge {
             display: inline-flex;
             align-items: center;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
             margin-left: 6px;
             vertical-align: middle;
             line-height: 1;
@@ -301,10 +300,12 @@ def generate_html(attendees, match_info, slug, sync_url=""):
             color: #FFD700;
             background: rgba(255, 215, 0, 0.15);
             border: 1px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
         }
         .member-badge.paid_guest {
             color: var(--text-muted);
             background: var(--surface-3);
+            border: 1px solid var(--surface-3);
         }
         .member-badge.nonpaid_member {
             color: var(--text-muted);
@@ -329,9 +330,10 @@ def generate_html(attendees, match_info, slug, sync_url=""):
 
         /* Match info bar */
         .match-info-bar {
-            background: var(--surface);
+            background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 100%);
             padding: 10px 16px;
             border-bottom: 1px solid var(--surface-2);
+            border-left: 3px solid var(--red);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -357,8 +359,8 @@ def generate_html(attendees, match_info, slug, sync_url=""):
             gap: 4px;
         }
         .count-dot {
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
         }
         .count-dot.paid_member { background: #FFD700; }
@@ -369,10 +371,11 @@ def generate_html(attendees, match_info, slug, sync_url=""):
         .viewfinder { height: 14vh; }
         .result-panel { min-height: 80px; padding: 14px; }
         .tab-content { max-height: none; }
-        .stats-bar .stat { padding: 8px 0; }
-        .stats-bar .stat-value { font-size: 24px; }
+        .stats-bar .stat { padding: 12px 0; }
+        .stats-bar .stat-value { font-size: 28px; }
+        .stats-bar .stat-label { letter-spacing: 2px; }
         .search-wrap { padding: 8px 12px; }
-        .search-wrap input { padding: 10px 14px; }
+        .search-wrap input { padding: 10px 14px 10px 40px; }
 
         /* Filter sub-tabs */
         .filter-bar {
@@ -396,6 +399,7 @@ def generate_html(attendees, match_info, slug, sync_url=""):
             background: var(--red);
             border-color: var(--red);
             color: white;
+            box-shadow: 0 2px 8px rgba(239, 1, 7, 0.3);
         }
         .filter-btn:active { transform: scale(0.95); }
         .filter-btn .filter-count {
@@ -463,13 +467,13 @@ def generate_html(attendees, match_info, slug, sync_url=""):
 
         /* CSV export */
         .export-btn {
-            padding: 8px 20px;
+            padding: 10px 24px;
             background: transparent;
             color: var(--text-muted);
             border: 1px solid var(--surface-3);
-            border-radius: 8px;
+            border-radius: 10px;
             font-family: 'DM Sans', sans-serif;
-            font-size: 12px;
+            font-size: 13px;
             cursor: pointer;
             transition: all 0.15s;
             margin-right: 8px;
@@ -554,12 +558,12 @@ def generate_html(attendees, match_info, slug, sync_url=""):
         .screening-count {
             display: inline-flex;
             align-items: center;
-            font-size: 8px;
+            font-size: 9px;
             font-weight: 700;
             color: var(--blue);
             background: var(--blue-bg);
             border: 1px solid rgba(41, 121, 255, 0.3);
-            padding: 1px 5px;
+            padding: 2px 6px;
             border-radius: 4px;
             margin-left: 4px;
             line-height: 1;
@@ -604,17 +608,19 @@ def generate_html(attendees, match_info, slug, sync_url=""):
         }
         .walkin-modal-content {
             background: var(--surface);
-            border: 1px solid var(--surface-3);
+            border: 1px solid rgba(255, 215, 0, 0.1);
             border-radius: 16px;
             padding: 24px;
             width: 300px;
             text-align: center;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
         }
         .walkin-modal-title {
             font-family: 'Bebas Neue', sans-serif;
             font-size: 22px;
             letter-spacing: 2px;
             margin-bottom: 4px;
+            color: var(--green);
         }
         .walkin-modal-name {
             font-size: 14px;
@@ -630,7 +636,7 @@ def generate_html(attendees, match_info, slug, sync_url=""):
         .walkin-amount-btn {
             padding: 12px;
             border: 1px solid var(--surface-3);
-            border-radius: 10px;
+            border-radius: 12px;
             background: var(--surface-2);
             color: var(--text);
             font-family: 'Bebas Neue', sans-serif;
@@ -639,8 +645,10 @@ def generate_html(attendees, match_info, slug, sync_url=""):
             transition: all 0.15s;
         }
         .walkin-amount-btn:active {
-            background: var(--green-bg);
+            background: var(--green);
             border-color: var(--green);
+            color: #000;
+            transform: scale(0.97);
         }
         .walkin-custom-wrap {
             display: flex;
@@ -691,11 +699,11 @@ def generate_html(attendees, match_info, slug, sync_url=""):
         venue_html = f'<a href="{match_info["venue_link"]}" target="_blank">{match_info["venue_name"]} ↗</a>'
 
     screening_time = match_info.get("screening_time", "")
-    time_html = f'<span style="margin-left:8px">🕘 {screening_time}</span>' if screening_time else ""
+    time_html = f'<span style="margin-left:8px"><svg class="icon icon-xs" style="opacity:0.7"><use href="#icon-clock"/></svg> {screening_time}</span>' if screening_time else ""
 
     match_info_bar = f"""
     <div class="match-info-bar">
-        <div class="venue">📍 {venue_html}{time_html}</div>
+        <div class="venue"><svg class="icon icon-xs" style="opacity:0.7"><use href="#icon-pin"/></svg> {venue_html}{time_html}</div>
         <div class="counts">
             <div class="count-item"><span class="count-dot paid_member"></span> {paid_member_count} paid</div>
             <div class="count-item"><span class="count-dot paid_guest"></span> {paid_guest_count} guests</div>
@@ -750,8 +758,8 @@ def generate_html(attendees, match_info, slug, sync_url=""):
                     <div class="stats-progress-label" id="stats-pct">0% checked in</div>
                 </div>
                 <div class="stats-breakdown">
-                    <span>🟡 """ + str(paid_member_count) + """ paid members</span>
-                    <span>⚪ """ + str(paid_guest_count) + """ paid guests</span>
+                    <span><span class="count-dot paid_member" style="display:inline-block;vertical-align:middle;margin-right:4px"></span> """ + str(paid_member_count) + """ paid members</span>
+                    <span><span class="count-dot paid_guest" style="display:inline-block;vertical-align:middle;margin-right:4px"></span> """ + str(paid_guest_count) + """ paid guests</span>
                 </div>
                 <div class="stats-walkin-total" id="stats-walkin">No walk-in payments yet</div>
             </div>
@@ -781,7 +789,7 @@ def generate_html(attendees, match_info, slug, sync_url=""):
                 <div><div class="pending-name">${p.name}</div><div class="pending-tickets">${p.total} ticket${p.total > 1 ? 's' : ''}</div></div>
                 <span class="pending-badge">${badge}</span>
             </div>`;""",
-        """const guest = GUESTS[p.id];
+        """const guest = window.GUESTS[p.id];
             const badgeLabels = {paid_member: 'Paid Member', paid_guest: 'Paid Guest', nonpaid_member: 'Non Paid'};
             const st = guest ? guest.status : 'paid_guest';
             const memberBadge = '<span class="member-badge ' + st + '">' + badgeLabels[st] + '</span>';
@@ -805,19 +813,19 @@ def generate_html(attendees, match_info, slug, sync_url=""):
 
     # Also show member badge in the result panel when checking in
     html = html.replace(
-        """resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in</div>`;""",
+        """resultEl.innerHTML = `<div class="result-icon"><svg class="icon icon-lg"><use href="#icon-check"/></svg></div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in</div>`;""",
         """const bl1 = {paid_member: 'Paid Member', paid_guest: 'Paid Guest', nonpaid_member: 'Non Paid'};
             const mb1 = '<span class="member-badge ' + guest.status + '" style="margin-left:0;margin-top:4px">' + bl1[guest.status] + '</span>';
-            const amtInfo1 = guest.amount > 0 ? ' · ₹' + Math.round(guest.amount) : '';
-            resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div>${mb1}<div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in${amtInfo1}</div>`;""",
+            const amtInfo1 = guest.amount > 0 ? ' · \\u20B9' + Math.round(guest.amount) : '';
+            resultEl.innerHTML = `<div class="result-icon"><svg class="icon icon-lg"><use href="#icon-check"/></svg></div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div>${mb1}<div class="result-counter">${record.count}/${max}</div><div class="result-detail">All in${amtInfo1}</div>`;""",
     )
 
     html = html.replace(
-        """resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter</div>`;""",
+        """resultEl.innerHTML = `<div class="result-icon"><svg class="icon icon-lg"><use href="#icon-check"/></svg></div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div><div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter</div>`;""",
         """const bl2 = {paid_member: 'Paid Member', paid_guest: 'Paid Guest', nonpaid_member: 'Non Paid'};
             const mb2 = '<span class="member-badge ' + guest.status + '" style="margin-left:0;margin-top:4px">' + bl2[guest.status] + '</span>';
-            const amtInfo2 = guest.amount > 0 ? ' · ₹' + Math.round(guest.amount) : '';
-            resultEl.innerHTML = `<div class="result-icon">&#10003;</div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div>${mb2}<div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter${amtInfo2}</div>`;""",
+            const amtInfo2 = guest.amount > 0 ? ' · \\u20B9' + Math.round(guest.amount) : '';
+            resultEl.innerHTML = `<div class="result-icon"><svg class="icon icon-lg"><use href="#icon-check"/></svg></div><div class="result-status">WELCOME</div><div class="result-name">${guest.name}</div>${mb2}<div class="result-counter">${record.count}/${max}</div><div class="result-detail">${max - record.count} more to enter${amtInfo2}</div>`;""",
     )
 
     # Patch pendingEl and logEl to target the inner list divs
@@ -890,7 +898,7 @@ def generate_html(attendees, match_info, slug, sync_url=""):
         """function addLog(name, time, cls, guestId) {
         const entry = document.createElement('div');
         entry.className = `log-entry ${cls}`;
-        const guest = guestId ? GUESTS[guestId] : null;
+        const guest = guestId ? window.GUESTS[guestId] : null;
         const st = guest ? guest.status : 'unknown';
         entry.dataset.status = st;
         const logBadgeLabels = {paid_member: 'PM', paid_guest: 'PG', nonpaid_member: 'NP'};
@@ -1193,13 +1201,15 @@ window.exportCSV = function() {
 <script>
 // --- Multi-device sync via Google Sheets ---
 const SYNC_URL = '{sync_url}';
+const SYNC_TOKEN = '{sync_token}';
 const MATCH_SLUG = '{slug}';
+const SYNC_KEY = 'arsenal_checkin_{slug}';
 const DEVICE_ID = localStorage.getItem('arsenal_device_id') || (() => {{
     const id = crypto.randomUUID();
     localStorage.setItem('arsenal_device_id', id);
     return id;
 }})();
-let syncQueue = JSON.parse(localStorage.getItem(scannedKey + '_queue') || '[]');
+let syncQueue = JSON.parse(localStorage.getItem(SYNC_KEY + '_queue') || '[]');
 let syncStatus = 'unknown';
 
 function updateSyncDot(status) {{
@@ -1213,15 +1223,26 @@ async function flushSyncQueue() {{
     updateSyncDot('pending');
     const batch = [...syncQueue];
     try {{
-        await fetch(SYNC_URL, {{
+        const resp = await fetch(SYNC_URL, {{
             method: 'POST',
-            mode: 'no-cors',
+            redirect: 'follow',
             headers: {{ 'Content-Type': 'text/plain' }},
-            body: JSON.stringify({{ events: batch }})
+            body: JSON.stringify({{ token: SYNC_TOKEN, events: batch }})
         }});
-        // no-cors means we can't read the response, assume success if no error
+        const result = await resp.json();
         syncQueue = syncQueue.slice(batch.length);
-        localStorage.setItem(scannedKey + '_queue', JSON.stringify(syncQueue));
+        localStorage.setItem(SYNC_KEY + '_queue', JSON.stringify(syncQueue));
+        // merge remote state from POST response
+        if (result) {{
+            for (const [id, data] of Object.entries(result)) {{
+                if (!window.scanned[id] || data.count > window.scanned[id].count) {{
+                    window.scanned[id] = {{ count: data.count, times: data.times || [] }};
+                }}
+            }}
+            localStorage.setItem(SYNC_KEY, JSON.stringify(window.scanned));
+            updateStats();
+            renderPending();
+        }}
         updateSyncDot(syncQueue.length === 0 ? 'synced' : 'pending');
     }} catch (e) {{
         updateSyncDot('offline');
@@ -1230,7 +1251,7 @@ async function flushSyncQueue() {{
 
 async function pullRemoteState() {{
     try {{
-        const resp = await fetch(SYNC_URL + '?slug=' + encodeURIComponent(MATCH_SLUG));
+        const resp = await fetch(SYNC_URL + '?token=' + encodeURIComponent(SYNC_TOKEN) + '&slug=' + encodeURIComponent(MATCH_SLUG));
         if (!resp.ok) return;
         const remote = await resp.json();
         let changed = false;
@@ -1241,7 +1262,7 @@ async function pullRemoteState() {{
             }}
         }}
         if (changed) {{
-            localStorage.setItem(scannedKey, JSON.stringify(window.scanned));
+            localStorage.setItem(SYNC_KEY, JSON.stringify(window.scanned));
             updateStats();
             renderPending();
             if (typeof updateFilterCounts === 'function') updateFilterCounts();
@@ -1262,18 +1283,18 @@ function queueSyncEvent(guestId, count, action) {{
         time: new Date().toISOString()
     }};
     syncQueue.push(event);
-    localStorage.setItem(scannedKey + '_queue', JSON.stringify(syncQueue));
+    localStorage.setItem(SYNC_KEY + '_queue', JSON.stringify(syncQueue));
     flushSyncQueue();
 }}
 
 async function pullRemoteGuests() {{
     try {{
-        const resp = await fetch(SYNC_URL + '?type=guests&slug=' + encodeURIComponent(MATCH_SLUG));
+        const resp = await fetch(SYNC_URL + '?token=' + encodeURIComponent(SYNC_TOKEN) + '&type=guests&slug=' + encodeURIComponent(MATCH_SLUG));
         if (!resp.ok) return;
         const remote = await resp.json();
         if (Object.keys(remote).length === 0) return;
         // Cache in localStorage
-        localStorage.setItem(scannedKey + '_guests', JSON.stringify(remote));
+        localStorage.setItem(SYNC_KEY + '_guests', JSON.stringify(remote));
         // Replace window.GUESTS and re-render
         window.GUESTS = remote;
         updateStats();
@@ -1287,7 +1308,7 @@ function startSync() {{
     if (syncStarted) return;
     syncStarted = true;
     // Load cached guests first for speed, then fetch fresh
-    const cachedGuests = localStorage.getItem(scannedKey + '_guests');
+    const cachedGuests = localStorage.getItem(SYNC_KEY + '_guests');
     if (cachedGuests) {{
         try {{
             const parsed = JSON.parse(cachedGuests);
@@ -1329,8 +1350,8 @@ function startSync() {{
 
         # Inject startSync() after PIN gate unlock (fresh entry)
         html = html.replace(
-            "document.getElementById('pin-gate').style.display = 'none';\n                document.getElementById('scanner-app').style.display = 'flex';",
-            "document.getElementById('pin-gate').style.display = 'none';\n                document.getElementById('scanner-app').style.display = 'flex';\n                if (typeof startSync === 'function') startSync();",
+            "gate.style.display = 'none';\n                    document.getElementById('scanner-app').style.display = 'flex';",
+            "gate.style.display = 'none';\n                    document.getElementById('scanner-app').style.display = 'flex';\n                    if (typeof startSync === 'function') startSync();",
         )
 
         # Inject startSync() after sessionStorage auto-unlock
@@ -1346,12 +1367,12 @@ function startSync() {{
         f.write(html)
 
     # Generate live stats page
-    stats_path = generate_stats_page(match_info, total_tickets, paid_member_count, paid_guest_count, nonpaid_member_count, slug, sync_url)
+    stats_path = generate_stats_page(match_info, total_tickets, paid_member_count, paid_guest_count, nonpaid_member_count, slug, sync_url, sync_token)
 
     return output_path, stats_path, len(attendees), total_tickets, paid_member_count, paid_guest_count, nonpaid_member_count
 
 
-def generate_stats_page(match_info, total_tickets, paid_members, paid_guests, nonpaid, slug, sync_url=""):
+def generate_stats_page(match_info, total_tickets, paid_members, paid_guests, nonpaid, slug, sync_url="", sync_token=""):
     """Generate a read-only live stats page that reads from the same localStorage."""
     logo_url = "https://drive.google.com/uc?export=view&id=1FLUcqsjxM3uPmgs5IGhNmkbTF81z0E6J"
     screening_time = match_info.get("screening_time", "")
@@ -1478,7 +1499,7 @@ def generate_stats_page(match_info, total_tickets, paid_members, paid_guests, no
     <img class="logo" src="{logo_url}" alt="Arsenal Pune SC" />
     <div class="match-title">{match_info['display_title'].upper()}</div>
     <div class="match-comp">{match_info['display_subtitle']}</div>
-    <div class="match-meta">{"📍 " + venue if venue else ""} {"· 🕘 " + screening_time if screening_time else ""}</div>
+    <div class="match-meta">{venue if venue else ""} {"· " + screening_time if screening_time else ""}</div>
 
     <div class="stats-grid">
         <div class="stat-card">
@@ -1501,9 +1522,9 @@ def generate_stats_page(match_info, total_tickets, paid_members, paid_guests, no
     </div>
 
     <div class="breakdown">
-        <span>🟡 {paid_members} paid members</span>
-        <span>⚪ {paid_guests} paid guests</span>
-        <span>⚫ {nonpaid} unpaid</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#FFD700;vertical-align:middle;margin-right:4px"></span> {paid_members} paid members</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#777;vertical-align:middle;margin-right:4px"></span> {paid_guests} paid guests</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#444;vertical-align:middle;margin-right:4px"></span> {nonpaid} unpaid</span>
     </div>
 
     <div class="updated" id="updated">Waiting for data...</div>
@@ -1512,6 +1533,7 @@ def generate_stats_page(match_info, total_tickets, paid_members, paid_guests, no
         const TOTAL = {total_tickets};
         const scannedKey = 'arsenal_checkin_{slug}';
         const SYNC_URL = '{sync_url}';
+        const SYNC_TOKEN = '{sync_token}';
         const MATCH_SLUG = '{slug}';
 
         function updateUI(scanned) {{
@@ -1532,7 +1554,7 @@ def generate_stats_page(match_info, total_tickets, paid_members, paid_guests, no
         async function refresh() {{
             if (SYNC_URL) {{
                 try {{
-                    const resp = await fetch(SYNC_URL + '?slug=' + encodeURIComponent(MATCH_SLUG));
+                    const resp = await fetch(SYNC_URL + '?token=' + encodeURIComponent(SYNC_TOKEN) + '&slug=' + encodeURIComponent(MATCH_SLUG));
                     if (resp.ok) {{
                         const remote = await resp.json();
                         updateUI(remote);
@@ -1614,33 +1636,91 @@ def push_guests_to_sheet(attendees, slug, sheet_id, account):
         print(f"ERROR pushing guests: {e.stderr or e}")
 
 
+def deploy_to_pages(checkin_path, stats_path, slug):
+    """Copy generated HTML to git repo and push to GitHub Pages."""
+    repo_root = os.path.dirname(SCRIPT_DIR)  # arsenal-meetup/
+    v2_dir = os.path.join(repo_root, "v2")
+
+    checkin_dest = os.path.join(v2_dir, f"checkin_{slug}.html")
+    stats_dest = os.path.join(v2_dir, f"stats_{slug}.html")
+
+    shutil.copy2(checkin_path, checkin_dest)
+    shutil.copy2(stats_path, stats_dest)
+
+    try:
+        subprocess.run(["git", "add", checkin_dest, stats_dest],
+                        cwd=repo_root, check=True, capture_output=True, text=True)
+        result = subprocess.run(["git", "diff", "--cached", "--quiet"],
+                                cwd=repo_root, capture_output=True)
+        if result.returncode == 0:
+            print("  No changes to deploy")
+            return
+
+        subprocess.run(
+            ["git", "commit", "-m", f"Update check-in page for {slug}"],
+            cwd=repo_root, check=True, capture_output=True, text=True
+        )
+        subprocess.run(
+            ["git", "push", "origin", "main"],
+            cwd=repo_root, check=True, capture_output=True, text=True
+        )
+        print(f"  Deployed to GitHub Pages")
+        print(f"  https://dheeraj-shah.github.io/arsenalpune-scanner/v2/checkin_{slug}.html")
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR deploying: {e.stderr or e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate check-in page for a screening")
     parser.add_argument("--slug", default="2026_03_22_carabao_cup_final_arsenal_v_mancity",
                         help="Match slug from screening_payments")
     parser.add_argument("--sync-url", default="",
                         help="Google Apps Script web app URL for multi-device sync")
+    parser.add_argument("--sync-token", default="",
+                        help="Auth token for the Apps Script endpoint (set via Script Properties)")
     parser.add_argument("--push-guests", action="store_true",
                         help="Push guest list to Google Sheets via gog CLI")
+    parser.add_argument("--deploy", action="store_true",
+                        help="Copy output to repo root v2/ and git push to GitHub Pages")
+    parser.add_argument("--full-sync", action="store_true",
+                        help="Full pipeline: sync screenings -> generate -> push guests -> deploy")
     parser.add_argument("--sheet-id", default="1eChpDkONGG-8dzzElu0WS7LGkesUcJaalPS-cSgZtEY",
                         help="Google Sheets spreadsheet ID")
     parser.add_argument("--gog-account", default="arsenalpune@gmail.com",
                         help="gog CLI account email")
     args = parser.parse_args()
 
+    # Full sync: run sync_screening.py first
+    if args.full_sync:
+        print("=== Step 1/4: Syncing screening payments ===\n")
+        sync_script = os.path.join(SCRIPT_DIR, "sync_screening.py")
+        subprocess.run(["python3", sync_script], check=True)
+        args.push_guests = True
+        args.deploy = True
+        print()
+
     conn = sqlite3.connect(DB_PATH)
     attendees = get_attendees(conn, args.slug)
     match_info = get_match_info(conn, args.slug)
     conn.close()
 
-    path, stats_path, people, tickets, paid_members, paid_guests, nonpaid = generate_html(attendees, match_info, args.slug, sync_url=args.sync_url)
+    step = "Step 2/4" if args.full_sync else "Generated"
+    print(f"=== {step}: Generating check-in page ===") if args.full_sync else None
+    path, stats_path, people, tickets, paid_members, paid_guests, nonpaid = generate_html(attendees, match_info, args.slug, sync_url=args.sync_url, sync_token=args.sync_token)
     print(f"Check-in page: {path}")
     print(f"Live stats page: {stats_path}")
     print(f"  {people} people, {tickets} paid tickets")
     print(f"  {paid_members} paid members, {paid_guests} paid guests, {nonpaid} non-paid members")
 
     if args.push_guests:
+        if args.full_sync:
+            print(f"\n=== Step 3/4: Pushing guests to Google Sheets ===")
         push_guests_to_sheet(attendees, args.slug, args.sheet_id, args.gog_account)
+
+    if args.deploy:
+        if args.full_sync:
+            print(f"\n=== Step 4/4: Deploying to GitHub Pages ===")
+        deploy_to_pages(path, stats_path, args.slug)
 
 
 if __name__ == "__main__":

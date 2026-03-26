@@ -15,6 +15,7 @@
 
 var SHEET_NAME = 'Log';
 var GUESTS_SHEET = 'Guests';
+var SECRET_TOKEN = PropertiesService.getScriptProperties().getProperty('SECRET_TOKEN') || '';
 
 function getLogSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -32,6 +33,10 @@ function getLogSheet() {
  * Returns: { "guest_id_1": { "count": 2, "times": ["21:04", "21:05"] }, ... }
  */
 function doGet(e) {
+  if (SECRET_TOKEN && (e && e.parameter && e.parameter.token || '') !== SECRET_TOKEN) {
+    return ContentService.createTextOutput(JSON.stringify({ error: 'Unauthorized' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   var slug = (e && e.parameter && e.parameter.slug) || '';
   var type = (e && e.parameter && e.parameter.type) || 'checkins';
 
@@ -91,6 +96,10 @@ function getGuests(slug) {
  */
 function doPost(e) {
   var body = JSON.parse(e.postData.contents);
+  if (SECRET_TOKEN && (body.token || '') !== SECRET_TOKEN) {
+    return ContentService.createTextOutput(JSON.stringify({ error: 'Unauthorized' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   var events = body.events || [];
   var sheet = getLogSheet();
   var slug = '';

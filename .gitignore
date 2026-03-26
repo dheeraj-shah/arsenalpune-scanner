@@ -1,0 +1,20 @@
+config.json
+service-account.json
+sent.json
+screening_sent/
+screening_sent.json
+qr_codes/
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Generated check-in / stats HTML (may contain embedded PII)
+v2/checkin_*.html
+v2/stats_*.html
+v2/output/
+checkin_*.html
+stats_*.html
